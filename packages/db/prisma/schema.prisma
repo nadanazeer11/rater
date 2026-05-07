@@ -6,3 +6,393 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// =====================================================================
+// Tenancy + auth
+// =====================================================================
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  locations Location[]
+
+  @@map("businesses")
+}
+
+model Location {
+  id         String   @id @default(cuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name                String
+  clerkOrganizationId String @unique @map("clerk_organization_id")
+
+  // Email sending config (Postmark) — values stored encrypted at app layer.
+  fromEmailDomain       String? @map("from_email_domain")
+  postmarkServerToken   String? @map("postmark_server_token")
+  postmarkMessageStream String? @map("postmark_message_stream")
+
+  // Google Place
+  googlePlaceId   String? @map("google_place_id")
+  googleReviewUrl String? @map("google_review_url")
+
+  // Per-location config
+  positiveRatingThreshold Int @default(4) @map("positive_rating_threshold")
+  customerCooldownDays    Int @default(90) @map("customer_cooldown_days")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  users                 LocationUser[]
+  customers             Customer[]
+  campaigns             Campaign[]
+  reviewRequests        ReviewRequest[]
+  events                Event[]
+  googleReviews         GoogleReview[]
+  googleReviewSnapshots GoogleReviewSnapshot[]
+  reviewSyncs           ReviewSync[]
+  notificationRules     NotificationRule[]
+
+  @@index([businessId])
+  @@map("locations")
+}
+
+model LocationUser {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  clerkUserId String  @map("clerk_user_id")
+  email       String
+  name        String?
+  role        String // 'admin' | 'member' — string for extensibility
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reviewRequestsSent ReviewRequest[] @relation("RequestSender")
+
+  @@unique([locationId, clerkUserId])
+  @@index([clerkUserId])
+  @@map("location_users")
+}
+
+// =====================================================================
+// Customers
+// =====================================================================
+
+model Customer {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  email String
+  name  String?
+  phone String?
+
+  // Dedup signals
+  hasAttributedGoogleReview Boolean   @default(false) @map("has_attributed_google_review")
+  lastReviewRequestSentAt   DateTime? @map("last_review_request_sent_at")
+  emailStatus               String    @default("valid") @map("email_status") // 'valid' | 'invalid' | 'unsubscribed' | 'complained'
+
+  // Import metadata
+  importSource String   @default("manual") @map("import_source") // 'csv' | 'manual' | 'api'
+  importedAt   DateTime @default(now()) @map("imported_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  reviewRequests ReviewRequest[]
+
+  @@unique([locationId, email])
+  @@index([locationId, name])
+  @@index([locationId, emailStatus])
+  @@map("customers")
+}
+
+// =====================================================================
+// Campaigns (template-based, step-driven)
+// =====================================================================
+
+model Campaign {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  steps          CampaignStep[]
+  reviewRequests ReviewRequest[]
+
+  @@index([locationId, isActive])
+  @@map("campaigns")
+}
+
+model CampaignStep {
+  id         String   @id @default(cuid())
+  campaignId String   @map("campaign_id")
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  stepOrder Int    @map("step_order")
+  stepType  String @map("step_type") // 'initial' | 'follow_up_no_rating' | 'follow_up_no_google_review' | 'feedback_thank_you' | 'google_review_thank_you' | ...
+
+  // Trigger predicate
+  delayDays     Int    @map("delay_days")
+  delayAnchor   String @map("delay_anchor") // 'request_created' | 'previous_step' | 'rating_submitted'
+  requiredState Json   @map("required_state") // e.g. { ratingStatus: 'not_rated', deliveryStatus: 'delivered' }
+
+  // Email template
+  subjectTemplate String @map("subject_template")
+  bodyTemplate    String @map("body_template") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  executions ReviewRequestStepExecution[]
+
+  @@unique([campaignId, stepOrder])
+  @@index([campaignId])
+  @@map("campaign_steps")
+}
+
+// =====================================================================
+// Review request lifecycle
+// =====================================================================
+
+model ReviewRequest {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  campaignId String   @map("campaign_id")
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  sentByUserId String?       @map("sent_by_user_id")
+  sentBy       LocationUser? @relation("RequestSender", fields: [sentByUserId], references: [id])
+
+  // Public-facing token used in landing page URLs
+  publicToken String @unique @default(cuid()) @map("public_token")
+
+  // Four orthogonal status tracks (string, not enum, for extensibility)
+  deliveryStatus          String @default("pending") @map("delivery_status")
+  // 'pending' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed'
+  engagementStatus        String @default("not_opened") @map("engagement_status")
+  // 'not_opened' | 'opened' | 'link_clicked' | 'landing_viewed'
+  ratingStatus            String @default("not_rated") @map("rating_status")
+  // 'not_rated' | 'rated_positive' | 'rated_negative' | 'feedback_submitted'
+  googleAttributionStatus String @default("not_applicable") @map("google_attribution_status")
+  // 'not_applicable' | 'pending_check' | 'confirmed_posted' | 'posted_low_confidence' | 'not_posted'
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  ratingSubmission       RatingSubmission?
+  feedbackSubmission     FeedbackSubmission?
+  events                 Event[]
+  stepExecutions         ReviewRequestStepExecution[]
+  attributedGoogleReview GoogleReview?                @relation("AttributedRequest")
+
+  @@index([locationId, deliveryStatus])
+  @@index([locationId, ratingStatus])
+  @@index([locationId, googleAttributionStatus])
+  @@index([customerId])
+  @@index([campaignId])
+  @@map("review_requests")
+}
+
+model ReviewRequestStepExecution {
+  id              String        @id @default(cuid())
+  reviewRequestId String        @map("review_request_id")
+  reviewRequest   ReviewRequest @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
+
+  campaignStepId String       @map("campaign_step_id")
+  campaignStep   CampaignStep @relation(fields: [campaignStepId], references: [id])
+
+  scheduledFor DateTime  @map("scheduled_for")
+  executedAt   DateTime? @map("executed_at")
+  status       String    @default("scheduled") // 'scheduled' | 'executed' | 'skipped' | 'failed'
+
+  postmarkMessageId String? @map("postmark_message_id")
+  errorMessage      String? @map("error_message") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([reviewRequestId, campaignStepId])
+  @@index([scheduledFor, status])
+  @@index([status])
+  @@map("review_request_step_executions")
+}
+
+model RatingSubmission {
+  id              String        @id @default(cuid())
+  reviewRequestId String        @unique @map("review_request_id")
+  reviewRequest   ReviewRequest @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
+
+  rating      Int // 1-5
+  routedTo    String   @map("routed_to") // 'google' | 'feedback'
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  // Anti-fraud / context
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent") @db.Text
+
+  @@map("rating_submissions")
+}
+
+model FeedbackSubmission {
+  id              String        @id @default(cuid())
+  reviewRequestId String        @unique @map("review_request_id")
+  reviewRequest   ReviewRequest @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
+
+  text        String   @db.Text
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  @@map("feedback_submissions")
+}
+
+// =====================================================================
+// Append-only event log
+// =====================================================================
+
+model Event {
+  id String @id @default(cuid())
+
+  // Either request-scoped or location-scoped (one will be null).
+  reviewRequestId String?        @map("review_request_id")
+  reviewRequest   ReviewRequest? @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
+
+  locationId String?   @map("location_id")
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  eventType String @map("event_type")
+  payload   Json
+
+  occurredAt DateTime @default(now()) @map("occurred_at")
+
+  @@index([reviewRequestId, occurredAt])
+  @@index([locationId, eventType, occurredAt])
+  @@index([eventType, occurredAt])
+  @@map("events")
+}
+
+// =====================================================================
+// Google reviews (Outscraper)
+// =====================================================================
+
+model GoogleReviewSnapshot {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  syncedAt      DateTime @map("synced_at")
+  totalCount    Int      @map("total_count")
+  averageRating Float    @map("average_rating")
+  distribution  Json // { "1": n, "2": n, "3": n, "4": n, "5": n }
+
+  isBaseline Boolean @default(false) @map("is_baseline")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([locationId, syncedAt])
+  @@index([locationId, isBaseline])
+  @@map("google_review_snapshots")
+}
+
+model GoogleReview {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  externalId        String  @map("external_id") // Google review_id, fallback content hash
+  reviewerName      String  @map("reviewer_name")
+  reviewerAvatarUrl String? @map("reviewer_avatar_url")
+  rating            Int
+  text              String? @db.Text
+  language          String?
+  postedAt          DateTime @map("posted_at")
+
+  firstSeenInSyncId String     @map("first_seen_in_sync_id")
+  firstSeenInSync   ReviewSync @relation("FirstSeen", fields: [firstSeenInSyncId], references: [id])
+  removedAt         DateTime?  @map("removed_at")
+
+  // Attribution
+  attributedReviewRequestId    String?        @unique @map("attributed_review_request_id")
+  attributedReviewRequest      ReviewRequest? @relation("AttributedRequest", fields: [attributedReviewRequestId], references: [id])
+  attributionConfidence        String?        @map("attribution_confidence") // 'high' | 'medium' | 'low'
+  attributionConfirmedManually Boolean        @default(false) @map("attribution_confirmed_manually")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([locationId, externalId])
+  @@index([locationId, postedAt])
+  @@index([locationId, removedAt])
+  @@index([reviewerName])
+  @@map("google_reviews")
+}
+
+model ReviewSync {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  status      String    @default("running") // 'running' | 'completed' | 'failed'
+
+  syncType    String @map("sync_type") // 'baseline' | 'incremental' | 'full' | 'targeted'
+  triggeredBy String @map("triggered_by") // 'cron' | 'on_demand' | 'request_completed'
+
+  reviewsAdded   Int     @default(0) @map("reviews_added")
+  reviewsRemoved Int     @default(0) @map("reviews_removed")
+  errorMessage   String? @map("error_message") @db.Text
+
+  reviewsFirstSeenInThisSync GoogleReview[] @relation("FirstSeen")
+
+  @@index([locationId, startedAt])
+  @@index([locationId, syncType, startedAt])
+  @@map("review_syncs")
+}
+
+// =====================================================================
+// Notifications
+// =====================================================================
+
+model NotificationRule {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  eventType String @map("event_type") // matches Event.eventType
+  channel   String // 'email' | 'in_app' | 'whatsapp' | 'slack'
+
+  // Recipients spec — flexible JSON:
+  //   { type: 'all_location_users' }
+  //   { type: 'admins_only' }
+  //   { type: 'sender' }
+  //   { type: 'specific', userIds: ['...'] }
+  recipients Json
+
+  isEnabled Boolean @default(true) @map("is_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([locationId, eventType, channel])
+  @@index([locationId, isEnabled])
+  @@map("notification_rules")
+}
