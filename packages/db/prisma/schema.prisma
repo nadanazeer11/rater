@@ -27,8 +27,7 @@ model Location {
   businessId String   @map("business_id")
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  name                String
-  clerkOrganizationId String @unique @map("clerk_organization_id")
+  name String
 
   // Email sending config (Postmark) — values stored encrypted at app layer.
   fromEmailDomain       String? @map("from_email_domain")
@@ -66,18 +65,19 @@ model LocationUser {
   locationId String   @map("location_id")
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  clerkUserId String  @map("clerk_user_id")
-  email       String
-  name        String?
-  role        String // 'admin' | 'member' — string for extensibility
+  // References Supabase auth.users.id (UUID). No FK because auth lives in a different schema.
+  authUserId String  @db.Uuid @map("auth_user_id")
+  email      String
+  name       String?
+  role       String // 'admin' | 'member' — string for extensibility
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   reviewRequestsSent ReviewRequest[] @relation("RequestSender")
 
-  @@unique([locationId, clerkUserId])
-  @@index([clerkUserId])
+  @@unique([locationId, authUserId])
+  @@index([authUserId])
   @@map("location_users")
 }
 
