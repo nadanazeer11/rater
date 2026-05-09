@@ -35,8 +35,11 @@ model Location {
   postmarkMessageStream String? @map("postmark_message_stream")
 
   // Google Place
-  googlePlaceId   String? @map("google_place_id")
-  googleReviewUrl String? @map("google_review_url")
+  googlePlaceId      String? @map("google_place_id")
+  googleReviewUrl    String? @map("google_review_url")
+  googleRating       Float?  @map("google_rating")
+  googleReviewsCount Int?    @map("google_reviews_count")
+  googleAddress      String? @map("google_address")
 
   // Per-location config
   positiveRatingThreshold Int @default(4) @map("positive_rating_threshold")

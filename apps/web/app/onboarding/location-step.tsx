@@ -26,6 +26,9 @@ export type LocationDraft = {
   name: string;
   googlePlaceId: string;
   googleReviewUrl: string;
+  googleRating?: number;
+  googleReviewsCount?: number;
+  googleAddress?: string;
 };
 
 type Option = { label: string; placeId: string };
@@ -88,6 +91,9 @@ export function LocationStep({
       name: selected.name,
       googlePlaceId: selected.placeId,
       googleReviewUrl: `https://search.google.com/local/writereview?placeid=${selected.placeId}`,
+      googleRating: selected.rating,
+      googleReviewsCount: selected.totalReviews,
+      googleAddress: selected.address || undefined,
     });
   }
 

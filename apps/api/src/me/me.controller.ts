@@ -9,6 +9,9 @@ type LocationSummary = {
   name: string;
   role: string;
   business: { id: string; name: string };
+  googleRating: number | null;
+  googleReviewsCount: number | null;
+  googleAddress: string | null;
 };
 
 type MeResponse = AuthUser & {
@@ -32,6 +35,9 @@ export class MeController {
             id: true,
             name: true,
             createdAt: true,
+            googleRating: true,
+            googleReviewsCount: true,
+            googleAddress: true,
             business: { select: { id: true, name: true } },
           },
         },
@@ -48,6 +54,9 @@ export class MeController {
         name: m.location.name,
         role: m.role,
         business: m.location.business,
+        googleRating: m.location.googleRating,
+        googleReviewsCount: m.location.googleReviewsCount,
+        googleAddress: m.location.googleAddress,
       })),
     };
   }

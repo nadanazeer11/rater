@@ -1,4 +1,13 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateLocationDto {
   @IsString()
@@ -15,4 +24,20 @@ export class CreateLocationDto {
   @IsString()
   @MaxLength(500)
   googleReviewUrl?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  googleRating?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  googleReviewsCount?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  googleAddress?: string;
 }

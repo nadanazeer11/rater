@@ -30,6 +30,9 @@ export class LocationsService {
           name: dto.name,
           googlePlaceId: dto.googlePlaceId,
           googleReviewUrl: dto.googleReviewUrl ?? null,
+          googleRating: dto.googleRating ?? null,
+          googleReviewsCount: dto.googleReviewsCount ?? null,
+          googleAddress: dto.googleAddress ?? null,
         },
       });
 

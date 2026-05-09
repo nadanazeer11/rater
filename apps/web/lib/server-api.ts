@@ -7,6 +7,9 @@ export type LocationSummary = {
   name: string;
   role: string;
   business: { id: string; name: string };
+  googleRating: number | null;
+  googleReviewsCount: number | null;
+  googleAddress: string | null;
 };
 
 export type MeResponse = {
