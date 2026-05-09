@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -27,9 +27,8 @@ export function InviteAcceptCard({
   currentUserEmail,
 }: Props) {
   const router = useRouter();
-  const [accepting, setAccepting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Non-pending: short-circuit before any of the action branches.
   if (invitation.status !== 'pending') {
     return (
       <Stack spacing={2} alignItems="center" textAlign="center">
@@ -67,25 +66,17 @@ export function InviteAcceptCard({
     </Stack>
   );
 
-  // Not signed in.
+  // Branch 1: not signed in → send magic link directly using the invitation's email.
   if (!currentUserEmail) {
     return (
       <Stack spacing={3}>
         {headline}
-        <Button
-          component={Link}
-          href={`/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`}
-          variant="contained"
-          size="large"
-          fullWidth
-        >
-          Sign in as {invitation.email}
-        </Button>
+        <SendSignInLink token={token} email={invitation.email} />
       </Stack>
     );
   }
 
-  // Signed in with the wrong email.
+  // Branch 2: signed in with the wrong email.
   if (currentUserEmail.toLowerCase() !== invitation.email.toLowerCase()) {
     async function handleSignOut() {
       const supabase = createClient();
@@ -100,15 +91,79 @@ export function InviteAcceptCard({
           invitation was sent to <strong>{invitation.email}</strong>.
         </Alert>
         <Button onClick={handleSignOut} variant="outlined" fullWidth>
-          Sign out and sign in as {invitation.email}
+          Sign out and accept as {invitation.email}
         </Button>
       </Stack>
     );
   }
 
-  // Signed in with the right email — ready to accept.
-  async function handleAccept() {
-    setAccepting(true);
+  // Branch 3: signed in with the right email → auto-accept.
+  return (
+    <Stack spacing={3}>
+      {headline}
+      <AutoAccept token={token} />
+    </Stack>
+  );
+}
+
+function SendSignInLink({ token, email }: { token: string; email: string }) {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>(
+    'idle',
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setStatus('sending');
+    setError(null);
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/invite/${token}`)}`,
+      },
+    });
+    if (signInError) {
+      setError(signInError.message);
+      setStatus('error');
+      return;
+    }
+    setStatus('sent');
+  }
+
+  if (status === 'sent') {
+    return (
+      <Alert severity="success">
+        Check <strong>{email}</strong> for a sign-in link. Open it on this
+        device to finish joining.
+      </Alert>
+    );
+  }
+
+  return (
+    <>
+      <Button
+        onClick={handleClick}
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={status === 'sending'}
+      >
+        {status === 'sending'
+          ? 'Sending…'
+          : `Send sign-in link to ${email}`}
+      </Button>
+      {error && <Alert severity="error">{error}</Alert>}
+    </>
+  );
+}
+
+function AutoAccept({ token }: { token: string }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  async function accept() {
+    setRetrying(true);
     setError(null);
     try {
       await apiPost(
@@ -119,23 +174,39 @@ export function InviteAcceptCard({
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
-      setAccepting(false);
+      setRetrying(false);
     }
   }
 
+  useEffect(() => {
+    void accept();
+    // Run once on mount; re-running would re-POST.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) {
+    return (
+      <>
+        <Alert severity="error">{error}</Alert>
+        <Button
+          onClick={accept}
+          variant="contained"
+          size="large"
+          fullWidth
+          disabled={retrying}
+        >
+          {retrying ? <CircularProgress size={20} color="inherit" /> : 'Try again'}
+        </Button>
+      </>
+    );
+  }
+
   return (
-    <Stack spacing={3}>
-      {headline}
-      <Button
-        onClick={handleAccept}
-        variant="contained"
-        size="large"
-        fullWidth
-        disabled={accepting}
-      >
-        {accepting ? <CircularProgress size={20} color="inherit" /> : 'Accept invitation'}
-      </Button>
-      {error && <Alert severity="error">{error}</Alert>}
+    <Stack alignItems="center" spacing={1.5} sx={{ py: 2 }}>
+      <CircularProgress size={28} />
+      <Typography variant="body2" color="text.secondary">
+        Joining…
+      </Typography>
     </Stack>
   );
 }
