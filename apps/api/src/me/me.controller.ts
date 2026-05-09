@@ -2,12 +2,53 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.type';
+import { PrismaService } from '../prisma/prisma.service';
+
+type LocationSummary = {
+  id: string;
+  name: string;
+  role: string;
+  business: { id: string; name: string };
+};
+
+type MeResponse = AuthUser & {
+  onboarded: boolean;
+  locations: LocationSummary[];
+};
 
 @Controller('me')
 @UseGuards(AuthGuard)
 export class MeController {
+  constructor(private readonly prisma: PrismaService) {}
+
   @Get()
-  me(@CurrentUser() user: AuthUser): AuthUser {
-    return user;
+  async me(@CurrentUser() user: AuthUser): Promise<MeResponse> {
+    const memberships = await this.prisma.locationUser.findMany({
+      where: { authUserId: user.id },
+      select: {
+        role: true,
+        location: {
+          select: {
+            id: true,
+            name: true,
+            createdAt: true,
+            business: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      onboarded: memberships.length > 0,
+      locations: memberships.map((m) => ({
+        id: m.location.id,
+        name: m.location.name,
+        role: m.role,
+        business: m.location.business,
+      })),
+    };
   }
 }
