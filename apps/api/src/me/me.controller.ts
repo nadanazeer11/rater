@@ -12,6 +12,8 @@ type LocationSummary = {
   googleRating: number | null;
   googleReviewsCount: number | null;
   googleAddress: string | null;
+  baselineScrapedAt: string | null;
+  createdAt: string;
 };
 
 type MeResponse = AuthUser & {
@@ -38,6 +40,7 @@ export class MeController {
             googleRating: true,
             googleReviewsCount: true,
             googleAddress: true,
+            baselineScrapedAt: true,
             business: { select: { id: true, name: true } },
           },
         },
@@ -57,6 +60,8 @@ export class MeController {
         googleRating: m.location.googleRating,
         googleReviewsCount: m.location.googleReviewsCount,
         googleAddress: m.location.googleAddress,
+        baselineScrapedAt: m.location.baselineScrapedAt?.toISOString() ?? null,
+        createdAt: m.location.createdAt.toISOString(),
       })),
     };
   }

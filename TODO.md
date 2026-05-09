@@ -37,6 +37,7 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 ## Security / pre-production
 
 - **Rotate the dev DB password.** The current one (`Mawsouq_1234`) was pasted in chat history. Reset via Supabase dashboard → Project Settings → Database → "Reset database password" before deploying anything public.
+- **Rotate the Upstash Redis password / token.** Pasted in chat during PR #12 setup. Upstash dashboard → DB → Reset Password. Then update `REDIS_URL` in `.env`.
 - **Separate prod project from dev.** Supabase free tier has no environments. Create a second project for prod when you're ready.
 - **Move secrets to platform env vars.** `.env` is local-only. Vercel and Railway/Fly each have their own env-var UIs — use those, never commit secrets.
 - **Enable 2FA** on Supabase, GitHub, Postmark, Outscraper.

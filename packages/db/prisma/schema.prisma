@@ -41,6 +41,9 @@ model Location {
   googleReviewsCount Int?    @map("google_reviews_count")
   googleAddress      String? @map("google_address")
 
+  // Set by the worker after the baseline Outscraper scrape lands.
+  baselineScrapedAt DateTime? @map("baseline_scraped_at")
+
   // Per-location config
   positiveRatingThreshold Int @default(4) @map("positive_rating_threshold")
   customerCooldownDays    Int @default(90) @map("customer_cooldown_days")

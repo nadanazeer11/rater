@@ -1,11 +1,15 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
 import { PrismaService } from '../prisma/prisma.service';
+import { ScrapeQueue } from '../queue/scrape.queue';
 import type { CreateLocationDto } from './locations.dto';
 
 @Injectable()
 export class LocationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scrapeQueue: ScrapeQueue,
+  ) {}
 
   /** Adds a new Location under the Business this user already admins.
    *  Only admins can add — invited members can't. */
@@ -23,8 +27,8 @@ export class LocationsService {
 
     const businessId = adminMembership.location.businessId;
 
-    return this.prisma.$transaction(async (tx) => {
-      const location = await tx.location.create({
+    const location = await this.prisma.$transaction(async (tx) => {
+      const loc = await tx.location.create({
         data: {
           businessId,
           name: dto.name,
@@ -38,14 +42,20 @@ export class LocationsService {
 
       await tx.locationUser.create({
         data: {
-          locationId: location.id,
+          locationId: loc.id,
           authUserId: user.id,
           email: user.email,
           role: 'admin',
         },
       });
 
-      return location;
+      return loc;
     });
+
+    if (location.googlePlaceId) {
+      await this.scrapeQueue.enqueueBaseline(location.id);
+    }
+
+    return location;
   }
 }
