@@ -2,10 +2,18 @@ import { createClient } from '@/lib/supabase/server';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
+export type LocationSummary = {
+  id: string;
+  name: string;
+  role: string;
+  business: { id: string; name: string };
+};
+
 export type MeResponse = {
   id: string;
   email: string;
   onboarded: boolean;
+  locations: LocationSummary[];
 };
 
 /**
