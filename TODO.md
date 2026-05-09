@@ -11,7 +11,6 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 | **Postmark** account | Sending review-request emails to customers | Before first campaign send | One server per customer eventually (Message Streams). Domain auth (SPF/DKIM/DMARC) via per-customer DNS wizard. |
 | **Postmark** as Supabase Auth SMTP | Magic-link delivery for sign-in/sign-up | Before inviting anyone outside yourself to test | Bypasses Supabase's dev SMTP rate limit (~3-4/hour). Configure in Supabase dashboard → Authentication → SMTP Settings. |
 | **Outscraper** account + API key | Pulling Google reviews for baseline + attribution + dedup | Before location onboarding feature | `OUTSCRAPER_API_KEY` in `.env`. ~$1–3/location/month. |
-| **Google Cloud Console** project + Places API | Location picker UI (search Google Place by name) | PR with location creation | `GOOGLE_PLACES_API_KEY` in `.env`. Restrict the key to your dashboard origins. |
 | **Google OAuth client** in Google Cloud Console | "Sign in with Google" button | When you're ready to enable Google sign-in | Then enable Google provider in Supabase → Authentication → Providers. |
 | **Upstash Redis** | BullMQ job queue (campaign step scheduler, Outscraper polls, attribution) | Before worker/scheduling features land | `REDIS_URL` in `.env`. Free tier covers MVP. |
 | **Sentry** | Error tracking on web + api + worker | Before any real users | Add SDK + DSN per app. |
