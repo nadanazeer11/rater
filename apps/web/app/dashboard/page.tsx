@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
 import { AppBar, Container, Stack, Toolbar, Typography } from '@mui/material';
 import { fetchMe } from '@/lib/server-api';
+import { OnboardingDialog } from './onboarding-dialog';
 import { SignOutButton } from './sign-out-button';
 
 export default async function DashboardPage() {
   const me = await fetchMe();
   if (!me) redirect('/sign-in');
-  if (!me.onboarded) redirect('/onboarding');
 
   return (
     <>
@@ -36,6 +36,7 @@ export default async function DashboardPage() {
           Dashboard placeholder. More to come.
         </Typography>
       </Container>
+      <OnboardingDialog initiallyOpen={!me.onboarded} />
     </>
   );
 }
