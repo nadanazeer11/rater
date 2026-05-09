@@ -7,7 +7,6 @@ const PRIMARY = '#9B8EC7';
 const PRIMARY_LIGHT = '#C5B0D5';
 const PRIMARY_DARK = '#7B6FA8';
 const SECONDARY = '#B8D4D9';
-const CREAM = '#F4EDE4';
 
 export const theme = createTheme({
   palette: {
@@ -23,7 +22,7 @@ export const theme = createTheme({
       contrastText: '#2C2A36',
     },
     background: {
-      default: CREAM,
+      default: '#FFFFFF',
       paper: '#FFFFFF',
     },
     text: {
