@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Button } from '@mui/material';
 import { createClient } from '@/lib/supabase/client';
 
 export function SignOutButton() {
@@ -14,12 +15,8 @@ export function SignOutButton() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleSignOut}
-      className="text-sm text-gray-700 underline hover:text-gray-900"
-    >
+    <Button variant="text" size="small" onClick={handleSignOut}>
       Sign out
-    </button>
+    </Button>
   );
 }

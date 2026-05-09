@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { AppBar, Container, Stack, Toolbar, Typography } from '@mui/material';
 import { createClient } from '@/lib/supabase/server';
 import { SignOutButton } from './sign-out-button';
 
@@ -11,19 +12,33 @@ export default async function DashboardPage() {
   if (!user) redirect('/sign-in');
 
   return (
-    <div className="min-h-screen p-8">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">rater</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">{user.email}</span>
-          <SignOutButton />
-        </div>
-      </header>
-      <main>
-        <p className="text-sm text-gray-600">
+    <>
+      <AppBar
+        position="static"
+        color="transparent"
+        sx={{
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            rater
+          </Typography>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              {user.email}
+            </Typography>
+            <SignOutButton />
+          </Stack>
+        </Toolbar>
+      </AppBar>
+      <Container sx={{ py: 4 }}>
+        <Typography variant="body2" color="text.secondary">
           Dashboard placeholder. Onboarding lands in the next PR.
-        </p>
-      </main>
-    </div>
+        </Typography>
+      </Container>
+    </>
   );
 }
