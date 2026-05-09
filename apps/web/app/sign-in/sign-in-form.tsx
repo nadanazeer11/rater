@@ -1,12 +1,22 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Alert, Button, Stack, TextField } from '@mui/material';
 import { createClient } from '@/lib/supabase/client';
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
+function isSafeNext(value: string | null): value is string {
+  // Only allow same-origin paths (must start with `/` and not `//`).
+  return Boolean(value && value.startsWith('/') && !value.startsWith('//'));
+}
+
 export function SignInForm() {
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get('next');
+  const next = isSafeNext(nextParam) ? nextParam : '/dashboard';
+
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +30,7 @@ export function SignInForm() {
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
 

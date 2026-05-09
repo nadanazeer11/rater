@@ -36,3 +36,30 @@ export async function fetchMe(): Promise<MeResponse | null> {
   }
   return (await res.json()) as MeResponse;
 }
+
+export type InvitationDetails = {
+  email: string;
+  role: string;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  expiresAt: string;
+  location: { id: string; name: string; businessName: string };
+  invitedBy: { email: string; name: string | null } | null;
+};
+
+/**
+ * Public lookup — no auth required. Returns null on 404 (invalid token).
+ * Throws on other api errors.
+ */
+export async function fetchInvitation(
+  token: string,
+): Promise<InvitationDetails | null> {
+  const res = await fetch(
+    `${API_URL}/invitations/by-token/${encodeURIComponent(token)}`,
+    { cache: 'no-store' },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Failed to fetch invitation: ${res.status}`);
+  }
+  return (await res.json()) as InvitationDetails;
+}

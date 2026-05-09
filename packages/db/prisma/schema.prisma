@@ -55,6 +55,7 @@ model Location {
   googleReviewSnapshots GoogleReviewSnapshot[]
   reviewSyncs           ReviewSync[]
   notificationRules     NotificationRule[]
+  invitations           Invitation[]
 
   @@index([businessId])
   @@map("locations")
@@ -75,10 +76,39 @@ model LocationUser {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   reviewRequestsSent ReviewRequest[] @relation("RequestSender")
+  invitationsSent    Invitation[]    @relation("Inviter")
 
   @@unique([locationId, authUserId])
   @@index([authUserId])
   @@map("location_users")
+}
+
+// =====================================================================
+// Invitations
+// =====================================================================
+
+model Invitation {
+  id         String   @id @default(cuid())
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  email String
+  role  String // 'admin' | 'member'
+  token String @unique
+
+  status     String    @default("pending") // 'pending' | 'accepted' | 'revoked' | 'expired'
+  expiresAt  DateTime  @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at")
+
+  invitedByUserId String?       @map("invited_by_user_id")
+  invitedBy       LocationUser? @relation("Inviter", fields: [invitedByUserId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([locationId, status])
+  @@index([email, status])
+  @@map("invitations")
 }
 
 // =====================================================================
