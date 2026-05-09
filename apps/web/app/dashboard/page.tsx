@@ -1,15 +1,12 @@
 import { redirect } from 'next/navigation';
 import { AppBar, Container, Stack, Toolbar, Typography } from '@mui/material';
-import { createClient } from '@/lib/supabase/server';
+import { fetchMe } from '@/lib/server-api';
 import { SignOutButton } from './sign-out-button';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect('/sign-in');
+  const me = await fetchMe();
+  if (!me) redirect('/sign-in');
+  if (!me.onboarded) redirect('/onboarding');
 
   return (
     <>
@@ -28,7 +25,7 @@ export default async function DashboardPage() {
           </Typography>
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="body2" color="text.secondary">
-              {user.email}
+              {me.email}
             </Typography>
             <SignOutButton />
           </Stack>
@@ -36,7 +33,7 @@ export default async function DashboardPage() {
       </AppBar>
       <Container sx={{ py: 4 }}>
         <Typography variant="body2" color="text.secondary">
-          Dashboard placeholder. Onboarding lands in the next PR.
+          Dashboard placeholder. More to come.
         </Typography>
       </Container>
     </>

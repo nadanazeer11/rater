@@ -61,6 +61,8 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 - **`DIRECT_URL` in `prisma/schema.prisma`.** Currently we use the Supabase Session pooler for both migrations and runtime (single `DATABASE_URL`). For more headroom on connection-heavy operations, add `directUrl = env("DIRECT_URL")` and point it at the direct connection (when on a network with IPv6, or a Supabase Pro IPv4 add-on).
 - **Test infrastructure.** No tests yet. NestJS uses Jest by default; React side could use Vitest + Testing Library. Add when first non-trivial business logic lands.
 - **Replace `cuid()` IDs with `cuid2()` or UUID.** `cuid()` is deprecated upstream. Tradeoffs: cuid2 is shorter and unguessable, UUID v7 is sortable. Schema-wide change — do it before there's real data.
+- **Branded magic-link email** (Supabase Auth → Email Templates). Replace generic copy with rater-branded subject + body matching the dashboard look. Wire in once Postmark is configured as Supabase's custom SMTP.
+- **Branded review-request email template** for Postmark — same visual identity as the dashboard. Used for outbound campaign emails. Build when Postmark wiring lands.
 
 ---
 

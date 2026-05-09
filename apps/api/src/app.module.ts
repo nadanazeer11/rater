@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { MeModule } from './me/me.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     HealthModule,
     MeModule,
+    OnboardingModule,
   ],
 })
 export class AppModule {}
