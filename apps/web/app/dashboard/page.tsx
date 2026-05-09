@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import {
   AppBar,
   Card,
@@ -63,10 +64,47 @@ export default async function DashboardPage() {
                       justifyContent="space-between"
                       alignItems="center"
                     >
-                      <Stack spacing={0.25}>
+                      <Stack spacing={0.5}>
                         <Typography variant="subtitle1" fontWeight={600}>
                           {loc.name}
                         </Typography>
+                        {(loc.googleRating !== null ||
+                          loc.googleAddress) && (
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            flexWrap="wrap"
+                          >
+                            {loc.googleRating !== null && (
+                              <Stack
+                                direction="row"
+                                spacing={0.25}
+                                alignItems="center"
+                              >
+                                <StarRoundedIcon
+                                  sx={{ fontSize: 16, color: '#F5B400' }}
+                                />
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {loc.googleRating.toFixed(1)}
+                                  {loc.googleReviewsCount !== null &&
+                                    ` (${loc.googleReviewsCount.toLocaleString()})`}
+                                </Typography>
+                              </Stack>
+                            )}
+                            {loc.googleAddress && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                · {loc.googleAddress}
+                              </Typography>
+                            )}
+                          </Stack>
+                        )}
                         <Typography variant="caption" color="text.secondary">
                           {loc.business.name}
                         </Typography>

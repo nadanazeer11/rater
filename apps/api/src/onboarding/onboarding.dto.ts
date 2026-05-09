@@ -3,9 +3,13 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -25,6 +29,22 @@ export class OnboardingLocationDto {
   @IsString()
   @MaxLength(500)
   googleReviewUrl?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  googleRating?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  googleReviewsCount?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  googleAddress?: string;
 }
 
 export class OnboardingDto {
