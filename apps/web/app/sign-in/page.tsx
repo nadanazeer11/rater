@@ -1,4 +1,5 @@
-import { Container, Paper, Stack, Typography } from '@mui/material';
+import { Suspense } from 'react';
+import { Container, Paper, Skeleton, Stack, Typography } from '@mui/material';
 import { SignInForm } from './sign-in-form';
 
 export default function SignInPage() {
@@ -22,7 +23,9 @@ export default function SignInPage() {
               Enter your email and we&apos;ll send you a magic link.
             </Typography>
           </Stack>
-          <SignInForm />
+          <Suspense fallback={<Skeleton variant="rounded" height={120} />}>
+            <SignInForm />
+          </Suspense>
         </Stack>
       </Paper>
     </Container>

@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { fetchMe } from '@/lib/server-api';
 import { AddLocationButton } from './add-location-button';
+import { InviteTeammateButton } from './invite-teammate-button';
 import { OnboardingDialog } from './onboarding-dialog';
 import { SignOutButton } from './sign-out-button';
 
@@ -70,12 +71,20 @@ export default async function DashboardPage() {
                           {loc.business.name}
                         </Typography>
                       </Stack>
-                      <Chip
-                        label={loc.role}
-                        size="small"
-                        color={loc.role === 'admin' ? 'primary' : 'default'}
-                        variant={loc.role === 'admin' ? 'filled' : 'outlined'}
-                      />
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        {loc.role === 'admin' && (
+                          <InviteTeammateButton
+                            locationId={loc.id}
+                            locationName={loc.name}
+                          />
+                        )}
+                        <Chip
+                          label={loc.role}
+                          size="small"
+                          color={loc.role === 'admin' ? 'primary' : 'default'}
+                          variant={loc.role === 'admin' ? 'filled' : 'outlined'}
+                        />
+                      </Stack>
                     </Stack>
                   </CardContent>
                 </Card>
