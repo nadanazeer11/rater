@@ -1,17 +1,19 @@
 import { redirect } from 'next/navigation';
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
+import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import {
-  AppBar,
+  Avatar,
   Box,
-  Container,
+  IconButton,
   Stack,
-  Toolbar,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { fetchMe } from '@/lib/server-api';
 import { AddLocationButton } from './add-location-button';
 import { LocationDetail } from './location-detail';
-import { LocationSelector } from './location-selector';
 import { OnboardingDialog } from './onboarding-dialog';
+import { Sidebar } from './sidebar';
 import { SignOutButton } from './sign-out-button';
 
 type SearchParams = Promise<{ location?: string }>;
@@ -29,62 +31,100 @@ export default async function DashboardPage({
   const selected =
     me.locations.find((l) => l.id === locationParam) ?? me.locations[0] ?? null;
 
-  return (
-    <>
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Toolbar sx={{ gap: 2 }}>
-          <Typography variant="h6" fontWeight={700}>
-            rater
-          </Typography>
-          {selected && (
-            <>
-              <Box
-                sx={{
-                  width: 1,
-                  height: 24,
-                  bgcolor: 'divider',
-                  mx: 0.5,
-                }}
-              />
-              <LocationSelector
-                locations={me.locations}
-                currentLocationId={selected.id}
-                canAddLocation={isAdminAnywhere}
-              />
-            </>
-          )}
-          <Box sx={{ flexGrow: 1 }} />
-          <Typography variant="body2" color="text.secondary">
-            {me.email}
-          </Typography>
-          <SignOutButton />
-        </Toolbar>
-      </AppBar>
+  const userInitial = (me.email[0] ?? '?').toUpperCase();
 
-      <Container sx={{ py: 4 }} maxWidth="lg">
-        {selected ? (
-          <LocationDetail location={selected} />
-        ) : me.onboarded ? (
-          <Stack spacing={2} alignItems="flex-start">
-            <Typography variant="h5">No locations yet</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Add a location to get started.
-            </Typography>
-            <AddLocationButton />
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar
+        locations={me.locations}
+        currentLocationId={selected?.id ?? null}
+        canAddLocation={isAdminAnywhere}
+      />
+
+      <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
+        {/* Top bar */}
+        <Box
+          sx={{
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            px: { xs: 3, sm: 4 },
+            py: 2,
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box sx={{ flexGrow: 1 }} />
+            <Tooltip title="Help (coming soon)" arrow>
+              <span>
+                <IconButton size="small" disabled>
+                  <HelpOutlineRoundedIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Notifications (coming soon)" arrow>
+              <span>
+                <IconButton size="small" disabled>
+                  <NotificationsNoneRoundedIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Box
+              sx={{
+                ml: 1,
+                pl: 1.5,
+                borderLeft: '1px solid',
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}
+              >
+                {userInitial}
+              </Avatar>
+              <Stack spacing={0} sx={{ display: { xs: 'none', sm: 'flex' } }}>
+                <Typography variant="body2" fontWeight={600} lineHeight={1.2}>
+                  {me.email}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  lineHeight={1.2}
+                >
+                  {selected?.business.name ?? '—'}
+                </Typography>
+              </Stack>
+              <SignOutButton />
+            </Box>
           </Stack>
-        ) : null}
-      </Container>
+        </Box>
+
+        {/* Body */}
+        <Box sx={{ px: { xs: 3, sm: 4 }, py: { xs: 3, sm: 4 } }}>
+          {selected ? (
+            <LocationDetail location={selected} />
+          ) : me.onboarded ? (
+            <Stack spacing={2} alignItems="flex-start" sx={{ maxWidth: 480 }}>
+              <Typography variant="h4">No locations yet</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Add your first location to start collecting reviews.
+              </Typography>
+              <AddLocationButton />
+            </Stack>
+          ) : null}
+        </Box>
+      </Box>
 
       <OnboardingDialog initiallyOpen={!me.onboarded} />
-    </>
+    </Box>
   );
 }

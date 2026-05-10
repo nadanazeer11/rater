@@ -35,7 +35,7 @@ The user has chosen to ship rating-based review gating despite Google's policy. 
 - GitHub: `git@github.com:nadanazeer11/rater.git` (personal account, NOT the work `nada-nazeer`/Nawy account)
 - **SSH host alias `github-nadanazeer11`** is configured in `~/.ssh/config` and uses `~/.ssh/id_ed25519_nadanazeer11`. The repo's remote URL uses this alias: `git@github-nadanazeer11:nadanazeer11/rater.git`
 - **Local git config (per-repo only, NEVER global):** `Nada Nazeer <nadanazeer11@gmail.com>`
-- **`gh` CLI is NOT installed.** Push branches and provide the auto-returned `https://github.com/nadanazeer11/rater/pull/new/<branch>` URL — user opens PRs manually
+- `**gh` CLI is NOT installed.** Push branches and provide the auto-returned `https://github.com/nadanazeer11/rater/pull/new/<branch>` URL — user opens PRs manually
 - **Default git's user identity is the work account** — every new branch needs the personal local config. Already set on this repo.
 
 ## Dev environment quirks
@@ -54,7 +54,7 @@ The user has chosen to ship rating-based review gating despite Google's policy. 
 - **Always `set -a && source .env && set +a`** before any `prisma` command — the CLI doesn't auto-load `.env` from the monorepo root
 - **Next.js doesn't auto-load monorepo-root `.env`** — `apps/web/next.config.ts` loads it explicitly via `dotenv`
 - **API loads `.env` from monorepo root** via `@nestjs/config` `envFilePath: [join(__dirname, '../../../.env')]`
-- **`.env.local` is also supported** at the monorepo root, override-style
+- `**.env.local` is also supported** at the monorepo root, override-style
 - **Default ports:** api 4000, web 3000. May be in use locally — override with `PORT=` env var or `next dev -p 3001`
 - **CORS** in api allows the origin from `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000`)
 - **pnpm warnings about ignored build scripts** (`@nestjs/core`, `@prisma/client`, `prisma`, `sharp`) are expected. Pin in root `package.json`'s `pnpm.onlyBuiltDependencies` if you want them silenced — see `TODO.md`
@@ -66,9 +66,15 @@ The user has chosen to ship rating-based review gating despite Google's policy. 
 - **Soft delete only where audit matters:** `Customer`, `ReviewRequest`, `GoogleReview`, `Location`. NOT on Event log (immutable), Campaign/CampaignStep (cascade)
 - **Multi-tenancy is app-level**, not Postgres RLS. Every tenant-scoped row has `locationId` indexed; app guards filter
 - **Customer email unique per-location** (`@@unique([locationId, email])`) — same person can be a customer of multiple businesses
-- **`@db.Text`** on long string columns (templates, feedback text, review text, error messages)
+- `**@db.Text`** on long string columns (templates, feedback text, review text, error messages)
 - **Snake_case in DB, camelCase in TS** via `@map`/`@@map` on every model
 - **Roles:** `'admin'` or `'member'` strings on `LocationUser`. Self-onboarders get `admin` on their own locations. Invited users get the role from the invite (default `member`).
+- **React Query Patterns**
+  - Set up `QueryClient` in `app/layout.tsx`
+  - Use `useQuery`, `useMutation`, `useInfiniteQuery` from `@tanstack/react-query`
+  - Place API logic in `/lib/api/` and call via hooks
+  - Use query keys prefixed by domain: `['user', id]`
+- Dont use error and loading usestates for api calls , use those of tanstack query
 
 ## Architectural principles (user-stated)
 
@@ -111,19 +117,23 @@ All in main:
 **Goal:** Every location card shows live Google ★ rating + review count + address. No background jobs, no Outscraper. We already fetch these in the onboarding Places picker — just save them.
 
 **Schema:** add to `Location`:
+
 ```prisma
 googleRating       Float?  @map("google_rating")
 googleReviewsCount Int?    @map("google_reviews_count")
 googleAddress      String? @map("google_address")
 ```
+
 Migration name: `add_google_metadata`. Use the diff-and-deploy pattern.
 
 **Backend:**
+
 - Extend `OnboardingDto` and `CreateLocationDto` with the new optional fields
 - Update `OnboardingService` and `LocationsService` to persist them
 - Extend `/me` location summary in `apps/api/src/me/me.controller.ts` to include them
 
 **Frontend:**
+
 - `apps/web/app/onboarding/location-step.tsx` already pulls rating/total/address from Places `getDetails`. Plumb them through `LocationDraft` (`onboarding-wizard.tsx`) and `add-location-button.tsx` to the POST body
 - Extend `LocationSummary` in `apps/web/lib/server-api.ts`
 - `apps/web/app/dashboard/page.tsx` — render under the location name (small ★/count/address row)
@@ -135,18 +145,21 @@ Migration name: `add_google_metadata`. Use the diff-and-deploy pattern.
 **Goal:** When a Location is created with a `googlePlaceId`, queue a worker job that pulls the full Google review history into `GoogleReview` + `GoogleReviewSnapshot` (with `is_baseline: true`). Foundation for attribution later.
 
 **External setup the user must do first:**
+
 1. **Outscraper** — sign up at outscraper.com (free $25 credit). Get API key from Profile → API and Integrations. `OUTSCRAPER_API_KEY=` in `.env`.
 2. **Upstash Redis** — sign up at upstash.com, create DB in `eu-west-1`. `REDIS_URL=` in `.env` (looks like `rediss://default:<token>@<host>.upstash.io:6379`).
 
 **Schema:** add `Location.baselineScrapedAt DateTime? @map("baseline_scraped_at")` as completion marker.
 
 **Backend (`apps/api`):**
+
 - Install `bullmq`
 - `apps/api/src/queue/queue.module.ts` — global BullMQ wiring against `REDIS_URL`
 - `apps/api/src/queue/scrape.queue.ts` — producer that adds `baseline-scrape` jobs `{ locationId }`
 - Call from `OnboardingService.run` and `LocationsService.createForCurrentBusiness` after the transaction commits
 
 **Worker (`apps/worker`):**
+
 - Install `bullmq`, `axios`, add `@rater/db` workspace dep
 - Bootstrap NestJS standalone, register a BullMQ Worker on `baseline-scrape`
 - `apps/worker/src/scrape/outscraper.service.ts` — wraps Outscraper Google Maps Reviews API (`POST https://api.app.outscraper.com/maps/reviews-v3?query=<place_id>&reviewsLimit=0&async=true`). For MVP: synchronous polling on the results endpoint until done.
@@ -166,14 +179,16 @@ Migration name: `add_google_metadata`. Use the diff-and-deploy pattern.
 
 ## Required external services (status)
 
-| Service | Status | Where used |
-|---|---|---|
-| Supabase | ✅ wired | DB + Auth |
-| Google Places API | ✅ wired | Onboarding location picker (`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`) |
-| Outscraper | ⏳ needed for PR #12 | Baseline + future Google review syncs |
-| Upstash Redis | ⏳ needed for PR #12 | BullMQ queue backend |
-| Postmark | ⏳ deferred | Email delivery (invitations + review-request emails) |
-| Sentry / BetterStack | ⏳ deferred | Observability |
+
+| Service              | Status              | Where used                                                       |
+| -------------------- | ------------------- | ---------------------------------------------------------------- |
+| Supabase             | ✅ wired             | DB + Auth                                                        |
+| Google Places API    | ✅ wired             | Onboarding location picker (`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`) |
+| Outscraper           | ⏳ needed for PR #12 | Baseline + future Google review syncs                            |
+| Upstash Redis        | ⏳ needed for PR #12 | BullMQ queue backend                                             |
+| Postmark             | ⏳ deferred          | Email delivery (invitations + review-request emails)             |
+| Sentry / BetterStack | ⏳ deferred          | Observability                                                    |
+
 
 ## TODO.md
 
@@ -188,3 +203,4 @@ Project-level non-code work (external setup, security tasks, deferred tech debt,
 - **Don't write docs files** (README, *.md) unless explicitly asked. (This `CLAUDE.md` is the exception — it's the one Claude-context file.)
 - **No comments in code** unless the *why* is non-obvious. Don't explain what well-named code already says.
 - **Don't add backward-compat shims**, dead-code re-exports, or "removed in PR #X" comments. Just delete cleanly.
+
