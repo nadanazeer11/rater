@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -30,6 +31,13 @@ export class OnboardingService {
 
     if (existingMembership) {
       throw new ConflictException('User has already completed onboarding');
+    }
+
+    const placeIds = dto.locations.map((l) => l.googlePlaceId);
+    if (new Set(placeIds).size !== placeIds.length) {
+      throw new BadRequestException(
+        'You picked the same Google place more than once. Each location must be unique.',
+      );
     }
 
     const result = await this.prisma.$transaction(async (tx) => {

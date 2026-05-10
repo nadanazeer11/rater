@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScrapeQueue } from '../queue/scrape.queue';
@@ -26,6 +30,20 @@ export class LocationsService {
     }
 
     const businessId = adminMembership.location.businessId;
+
+    const existing = await this.prisma.location.findFirst({
+      where: {
+        businessId,
+        googlePlaceId: dto.googlePlaceId,
+        deletedAt: null,
+      },
+      select: { id: true, name: true },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `"${existing.name}" is already added to this business.`,
+      );
+    }
 
     const location = await this.prisma.$transaction(async (tx) => {
       const loc = await tx.location.create({

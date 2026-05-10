@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Alert,
@@ -14,7 +14,12 @@ import { apiPost } from '@/lib/api';
 import { GoogleMapsLoader } from '../onboarding/google-maps-loader';
 import { LocationStep, type LocationDraft } from '../onboarding/location-step';
 
-export function AddLocationButton() {
+type Props = {
+  /** Custom trigger renderer. If omitted, renders the default outlined button. */
+  renderAs?: (open: () => void) => ReactNode;
+};
+
+export function AddLocationButton({ renderAs }: Props = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,8 +35,9 @@ export function AddLocationButton() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost('/locations', loc);
+      const created = await apiPost<{ id: string }>('/locations', loc);
       setOpen(false);
+      router.push(`/dashboard?location=${created.id}`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -42,9 +48,13 @@ export function AddLocationButton() {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
-        Add location
-      </Button>
+      {renderAs ? (
+        renderAs(() => setOpen(true))
+      ) : (
+        <Button variant="outlined" onClick={() => setOpen(true)}>
+          Add location
+        </Button>
+      )}
       <Dialog
         open={open}
         onClose={handleClose}
