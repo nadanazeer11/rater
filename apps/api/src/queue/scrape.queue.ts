@@ -55,7 +55,7 @@ export class ScrapeQueue implements OnModuleInit, OnModuleDestroy {
     await this.queue.add(
       'baseline',
       { locationId },
-      { jobId: `baseline-scrape:${locationId}` },
+      { jobId: `baseline-${locationId}` },
     );
     this.logger.log(`Enqueued baseline-scrape for ${locationId}`);
   }
