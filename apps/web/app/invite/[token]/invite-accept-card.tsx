@@ -4,9 +4,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Alert, Button, CircularProgress } from '@mui/material';
-import { apiPost } from '@/lib/api';
+import type { InvitationDetails } from '@rater/types';
 import { createClient } from '@/lib/supabase/client';
-import type { InvitationDetails } from '@/lib/server-api';
+import { useAcceptInvitation } from '@/hooks/use-accept-invitation';
 
 type Props = {
   token: string;
@@ -166,44 +166,29 @@ function SendSignInLink({ token, email }: { token: string; email: string }) {
 }
 
 function AutoAccept({ token }: { token: string }) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [retrying, setRetrying] = useState(false);
-
-  async function accept() {
-    setRetrying(true);
-    setError(null);
-    try {
-      await apiPost(
-        `/invitations/by-token/${encodeURIComponent(token)}/accept`,
-        {},
-      );
-      router.push('/dashboard');
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-      setRetrying(false);
-    }
-  }
+  const acceptInvitation = useAcceptInvitation();
+  const { mutate } = acceptInvitation;
 
   useEffect(() => {
-    void accept();
-    // Run once on mount; re-running would re-POST.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    mutate(token);
+  }, [mutate, token]);
 
-  if (error) {
+  if (acceptInvitation.error) {
     return (
       <div className="space-y-4">
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{acceptInvitation.error.message}</Alert>
         <Button
-          onClick={accept}
+          onClick={() => mutate(token)}
           variant="contained"
           size="large"
           fullWidth
-          disabled={retrying}
+          disabled={acceptInvitation.isPending}
         >
-          {retrying ? <CircularProgress size={20} color="inherit" /> : 'Try again'}
+          {acceptInvitation.isPending ? (
+            <CircularProgress size={20} color="inherit" />
+          ) : (
+            'Try again'
+          )}
         </Button>
       </div>
     );

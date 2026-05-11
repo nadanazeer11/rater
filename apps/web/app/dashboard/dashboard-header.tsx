@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Divider, IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
-import { createClient } from '@/lib/supabase/client';
+import { useSignOut } from '@/hooks/use-sign-out';
 
 export function DashboardHeader({
   email,
@@ -14,15 +13,12 @@ export function DashboardHeader({
   email: string;
   businessName: string | null;
 }) {
-  const router = useRouter();
+  const signOut = useSignOut();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     setAnchor(null);
-    router.push('/sign-in');
-    router.refresh();
+    await signOut();
   }
 
   const initial = email.trim()[0]?.toUpperCase() ?? '?';

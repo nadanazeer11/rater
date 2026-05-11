@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Alert, Dialog, DialogContent } from '@mui/material';
-import { apiPost } from '@/lib/api';
+import { useAddLocation } from '@/hooks/use-add-location';
 import { GoogleMapsLoader } from '../onboarding/google-maps-loader';
 import { LocationStep, type LocationDraft } from '../onboarding/location-step';
 
@@ -13,29 +11,16 @@ type Props = {
 };
 
 export function AddLocationDialog({ open, onClose }: Props) {
-  const router = useRouter();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const addLocation = useAddLocation();
 
   function handleClose() {
-    if (submitting) return;
-    setError(null);
+    if (addLocation.isPending) return;
+    addLocation.reset();
     onClose();
   }
 
-  async function handleAdd(loc: LocationDraft) {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const created = await apiPost<{ id: string }>('/locations', loc);
-      onClose();
-      router.push(`/dashboard?location=${created.id}`);
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+  function handleAdd(loc: LocationDraft) {
+    addLocation.mutate(loc, { onSuccess: () => onClose() });
   }
 
   return (
@@ -51,10 +36,12 @@ export function AddLocationDialog({ open, onClose }: Props) {
               total={1}
               onBack={handleClose}
               onNext={handleAdd}
-              submitting={submitting}
+              submitting={addLocation.isPending}
             />
           </GoogleMapsLoader>
-          {error && <Alert severity="error">{error}</Alert>}
+          {addLocation.error && (
+            <Alert severity="error">{addLocation.error.message}</Alert>
+          )}
         </div>
       </DialogContent>
     </Dialog>

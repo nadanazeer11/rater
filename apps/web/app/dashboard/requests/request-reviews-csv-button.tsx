@@ -1,27 +1,20 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { Alert, Button, Dialog, DialogContent } from '@mui/material';
-import { apiPost } from '@/lib/api';
+import type { ImportRequestsResult } from '@rater/types';
+import { useImportReviewRequests } from '@/hooks/use-import-review-requests';
 
 const MAX_ROWS = 5000;
 
 type Row = { email: string; name?: string; phone?: string };
-type ImportResult = {
-  received: number;
-  created: number;
-  skippedDuplicates: number;
-  skippedInvalid: number;
-  skippedCooldown: number;
-};
 type Stage =
   | { kind: 'pick' }
   | { kind: 'preview'; fileName: string; rows: Row[] }
-  | { kind: 'done'; result: ImportResult };
+  | { kind: 'done'; result: ImportRequestsResult };
 
-function summarize(r: ImportResult): string {
+function summarize(r: ImportRequestsResult): string {
   const parts: string[] = [`${r.created} request${r.created === 1 ? '' : 's'} created`];
   if (r.skippedCooldown > 0) parts.push(`${r.skippedCooldown} skipped (recently requested)`);
   if (r.skippedDuplicates > 0) parts.push(`${r.skippedDuplicates} duplicate`);
@@ -30,16 +23,18 @@ function summarize(r: ImportResult): string {
 }
 
 export function RequestReviewsCsvButton({ locationId }: { locationId: string }) {
-  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'pick' });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const importRequests = useImportReviewRequests();
+  const submitting = importRequests.isPending;
+  const error = parseError ?? importRequests.error?.message ?? null;
 
   function reset() {
     setStage({ kind: 'pick' });
-    setError(null);
+    setParseError(null);
+    importRequests.reset();
     if (inputRef.current) inputRef.current.value = '';
   }
   function handleClose() {
@@ -49,7 +44,8 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
   }
 
   function handleFile(file: File) {
-    setError(null);
+    setParseError(null);
+    importRequests.reset();
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: 'greedy',
@@ -57,7 +53,7 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
       complete: (res) => {
         const fields = res.meta.fields ?? [];
         if (!fields.includes('email')) {
-          setError('No "email" column found. Add a header row with at least an "email" column.');
+          setParseError('No "email" column found. Add a header row with at least an "email" column.');
           return;
         }
         const rows: Row[] = res.data
@@ -68,33 +64,26 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
           }))
           .filter((r) => r.email.length > 0 || r.name || r.phone);
         if (rows.length === 0) {
-          setError('That file has no data rows.');
+          setParseError('That file has no data rows.');
           return;
         }
         if (rows.length > MAX_ROWS) {
-          setError(
+          setParseError(
             `That file has ${rows.length.toLocaleString()} rows — the limit is ${MAX_ROWS.toLocaleString()} per import.`,
           );
           return;
         }
         setStage({ kind: 'preview', fileName: file.name, rows });
       },
-      error: () => setError('Could not read that file. Make sure it is a .csv.'),
+      error: () => setParseError('Could not read that file. Make sure it is a .csv.'),
     });
   }
 
-  async function handleImport(rows: Row[]) {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await apiPost<ImportResult>('/review-requests/import', { locationId, rows });
-      setStage({ kind: 'done', result });
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+  function handleImport(rows: Row[]) {
+    importRequests.mutate(
+      { locationId, rows },
+      { onSuccess: (result) => setStage({ kind: 'done', result }) },
+    );
   }
 
   return (

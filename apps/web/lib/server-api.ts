@@ -1,121 +1,83 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { toApiClientError } from '@/lib/api-error';
+import { ApiClientError, toApiClientError } from '@/lib/api-error';
+import type {
+  CustomerSummary,
+  InvitationDetails,
+  MeResponse,
+  PublicReviewRequest,
+  RequestSummary,
+} from '@rater/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const TIMEOUT_MS = 15_000;
 
-export type LocationSummary = {
-  id: string;
-  name: string;
-  role: string;
-  business: { id: string; name: string };
-  googleRating: number | null;
-  googleReviewsCount: number | null;
-  googleAddress: string | null;
-  baselineScrapedAt: string | null;
-  createdAt: string;
-};
+async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${API_URL}${path}`, {
+      ...init,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === 'TimeoutError';
+    throw new ApiClientError({
+      statusCode: timedOut ? 408 : 0,
+      code: 'INTERNAL',
+      message: timedOut ? 'The request timed out.' : 'Could not reach the server.',
+      timestamp: new Date().toISOString(),
+      path,
+    });
+  }
+}
 
-export type MeResponse = {
-  id: string;
-  email: string;
-  onboarded: boolean;
-  locations: LocationSummary[];
-};
-
-/**
- * Returns null when there's no Supabase session.
- * Throws an ApiClientError when the api is reachable but returns an error.
- */
-export async function fetchMe(): Promise<MeResponse | null> {
+async function authedFetch(path: string): Promise<Response | null> {
   const supabase = await createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) return null;
-
-  const res = await fetch(`${API_URL}/me`, {
+  return fetchWithTimeout(path, {
     headers: { Authorization: `Bearer ${session.access_token}` },
-    cache: 'no-store',
   });
-  if (!res.ok) throw await toApiClientError(res);
-  return (await res.json()) as MeResponse;
 }
 
-export type CustomerSummary = {
-  id: string;
-  email: string;
-  name: string | null;
-  phone: string | null;
-  emailStatus: string;
-  importSource: string;
-  importedAt: string;
-  createdAt: string;
-};
+/**
+ * Returns null when there's no Supabase session. Throws an ApiClientError when
+ * the api is reachable but returns an error. Memoized per request (`cache`) so
+ * the dashboard layout and its pages share one round-trip.
+ */
+export const fetchMe = cache(async (): Promise<MeResponse | null> => {
+  const res = await authedFetch('/me');
+  if (!res) return null;
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as MeResponse;
+});
 
 /** Customers for a location. Throws an ApiClientError on api errors (incl. 403
  *  if the signed-in user isn't a member of the location). */
 export async function fetchCustomers(
   locationId: string,
 ): Promise<CustomerSummary[]> {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return [];
-
-  const res = await fetch(
-    `${API_URL}/customers?locationId=${encodeURIComponent(locationId)}`,
-    {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      cache: 'no-store',
-    },
+  const res = await authedFetch(
+    `/customers?locationId=${encodeURIComponent(locationId)}`,
   );
+  if (!res) return [];
   if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as CustomerSummary[];
 }
-
-export type RequestSummary = {
-  id: string;
-  customer: { name: string | null; email: string };
-  deliveryStatus: string;
-  engagementStatus: string;
-  ratingStatus: string;
-  googleAttributionStatus: string;
-  redirectedToGoogle: boolean;
-  rating: number | null;
-  feedback: string | null;
-  createdAt: string;
-  rateUrl: string;
-};
 
 /** Review requests for a location. Throws an ApiClientError on api errors. */
 export async function fetchReviewRequests(
   locationId: string,
 ): Promise<RequestSummary[]> {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return [];
-
-  const res = await fetch(
-    `${API_URL}/review-requests?locationId=${encodeURIComponent(locationId)}`,
-    {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      cache: 'no-store',
-    },
+  const res = await authedFetch(
+    `/review-requests?locationId=${encodeURIComponent(locationId)}`,
   );
+  if (!res) return [];
   if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as RequestSummary[];
 }
-
-export type PublicReviewRequest = {
-  businessName: string;
-  locationName: string;
-  alreadyRated: boolean;
-  rating: number | null;
-  googleReviewUrl: string | null;
-};
 
 /**
  * Public lookup for the /rate/[token] page — no auth. Returns null on 404
@@ -124,23 +86,13 @@ export type PublicReviewRequest = {
 export async function fetchReviewRequestByToken(
   token: string,
 ): Promise<PublicReviewRequest | null> {
-  const res = await fetch(
-    `${API_URL}/review-requests/by-token/${encodeURIComponent(token)}`,
-    { cache: 'no-store' },
+  const res = await fetchWithTimeout(
+    `/review-requests/by-token/${encodeURIComponent(token)}`,
   );
   if (res.status === 404) return null;
   if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as PublicReviewRequest;
 }
-
-export type InvitationDetails = {
-  email: string;
-  role: string;
-  status: 'pending' | 'accepted' | 'revoked' | 'expired';
-  expiresAt: string;
-  location: { id: string; name: string; businessName: string };
-  invitedBy: { email: string; name: string | null } | null;
-};
 
 /**
  * Public lookup — no auth required. Returns null on 404 (invalid token).
@@ -149,9 +101,8 @@ export type InvitationDetails = {
 export async function fetchInvitation(
   token: string,
 ): Promise<InvitationDetails | null> {
-  const res = await fetch(
-    `${API_URL}/invitations/by-token/${encodeURIComponent(token)}`,
-    { cache: 'no-store' },
+  const res = await fetchWithTimeout(
+    `/invitations/by-token/${encodeURIComponent(token)}`,
   );
   if (res.status === 404) return null;
   if (!res.ok) throw await toApiClientError(res);
