@@ -41,6 +41,39 @@ export async function fetchMe(): Promise<MeResponse | null> {
   return (await res.json()) as MeResponse;
 }
 
+export type CustomerSummary = {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  emailStatus: string;
+  importSource: string;
+  importedAt: string;
+  createdAt: string;
+};
+
+/** Customers for a location. Throws an ApiClientError on api errors (incl. 403
+ *  if the signed-in user isn't a member of the location). */
+export async function fetchCustomers(
+  locationId: string,
+): Promise<CustomerSummary[]> {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  const res = await fetch(
+    `${API_URL}/customers?locationId=${encodeURIComponent(locationId)}`,
+    {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as CustomerSummary[];
+}
+
 export type InvitationDetails = {
   email: string;
   role: string;

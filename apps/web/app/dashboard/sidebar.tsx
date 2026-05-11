@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
@@ -19,14 +20,20 @@ type Props = {
   canAddLocation: boolean;
 };
 
-const NAV_ITEMS: { label: string; icon: SvgIconComponent; active?: boolean }[] =
-  [
-    { label: 'Dashboard', icon: HomeRoundedIcon, active: true },
-    { label: 'Customers', icon: GroupsRoundedIcon },
-    { label: 'Campaigns', icon: CampaignRoundedIcon },
-    { label: 'Reviews', icon: RateReviewRoundedIcon },
-    { label: 'Settings', icon: SettingsRoundedIcon },
-  ];
+type NavItem = {
+  label: string;
+  icon: SvgIconComponent;
+  /** Base path for the live items; omitted ones render as disabled "coming soon". */
+  path?: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', icon: HomeRoundedIcon, path: '/dashboard' },
+  { label: 'Customers', icon: GroupsRoundedIcon, path: '/dashboard/customers' },
+  { label: 'Campaigns', icon: CampaignRoundedIcon },
+  { label: 'Reviews', icon: RateReviewRoundedIcon },
+  { label: 'Settings', icon: SettingsRoundedIcon },
+];
 
 const DOT_COLORS = [
   'bg-accent',
@@ -44,7 +51,10 @@ export function Sidebar({
   canAddLocation,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const [addOpen, setAddOpen] = useState(false);
+
+  const locationQuery = currentLocationId ? `?location=${currentLocationId}` : '';
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface md:flex">
@@ -58,21 +68,37 @@ export function Sidebar({
       </div>
 
       <nav className="space-y-0.5 px-3">
-        {NAV_ITEMS.map(({ label, icon: Icon, active }) => (
-          <div
-            key={label}
-            title={active ? undefined : 'Coming soon'}
-            aria-disabled={!active}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-              active
-                ? 'bg-accent-soft font-semibold text-accent'
-                : 'cursor-not-allowed font-medium text-faint'
-            }`}
-          >
-            <Icon fontSize="small" />
-            {label}
-          </div>
-        ))}
+        {NAV_ITEMS.map(({ label, icon: Icon, path }) => {
+          if (!path) {
+            return (
+              <div
+                key={label}
+                title="Coming soon"
+                aria-disabled
+                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-faint"
+              >
+                <Icon fontSize="small" />
+                {label}
+              </div>
+            );
+          }
+          const active =
+            path === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(path);
+          return (
+            <Link
+              key={label}
+              href={`${path}${locationQuery}`}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                active
+                  ? 'bg-accent-soft font-semibold text-accent'
+                  : 'font-medium text-muted hover:bg-zinc-50 hover:text-ink'
+              }`}
+            >
+              <Icon fontSize="small" />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="mx-5 my-4 border-t border-border" />

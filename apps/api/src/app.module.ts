@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
+import { CustomersModule } from './customers/customers.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { LocationsModule } from './locations/locations.module';
@@ -25,6 +26,7 @@ import { QueueModule } from './queue/queue.module';
     MeModule,
     OnboardingModule,
     LocationsModule,
+    CustomersModule,
     InvitationsModule,
   ],
 })

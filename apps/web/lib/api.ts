@@ -32,3 +32,9 @@ export async function apiGet<T>(path: string): Promise<T> {
   if (!res.ok) throw await toApiClientError(res);
   return res.json() as Promise<T>;
 }
+
+export async function apiDelete(path: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', headers });
+  if (!res.ok) throw await toApiClientError(res);
+}

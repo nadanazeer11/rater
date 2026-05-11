@@ -8,6 +8,14 @@
 
 The user has chosen to ship rating-based review gating despite Google's policy. Don't re-litigate this. Only flag the *downstream* risk to *their customers'* Google listings (de-ranking/removal) when relevant.
 
+## Feature docs
+
+Detailed per-feature reference docs live in `docs/` (how *and why* things are built — the stuff you can't recover from the code). **Read the relevant one before working in that area**, and **update it in the same PR that changes the feature** (same discipline as tests). New feature → new `docs/<area>.md` copied from `docs/_template.md` + a line in the index below. Read on demand, not all at once. How the system works: [docs/README.md](docs/README.md).
+
+Index:
+- [docs/architecture.md](docs/architecture.md) — repo layout, the API clean-architecture module pattern, BullMQ wiring, Prisma/DB conventions, Supabase auth, dev quirks. *Read this once; most feature docs assume it.*
+- [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `customers` API module, the `/dashboard/customers` page (CSV import + manual add + list + remove), dedup/soft-delete behaviour.
+
 ## Stack
 
 - **Backend:** NestJS 11 (`apps/api` + `apps/worker`)
@@ -96,6 +104,7 @@ All in main:
 11. **Team invitations** (`feat/team-invitations`, just merged): admin generates a tokenized link from a per-location button, recipient opens link → magic-link sent inline → bounces back to `/invite/[token]` signed in → auto-accepts → `/dashboard`. **Email delivery deferred** — admin gets a "Copy link" UI for now.
 12. **Dashboard shell + location selector**: sidebar-driven layout — left rail (nav, "coming soon" sections, switchable locations list with colored dots, add-location, promo) + in-main header (account menu, sign-out) + per-location detail view (hero with rating/address/role/scraping-baseline pills + 3 placeholder "Overview" stat cards). Selected location via `?location=<id>` searchParam (defaults to first). Backend: rejects adding a Location whose `googlePlaceId` already exists in the business, and rejects duplicate place ids within a single onboarding payload.
 13. **"Iris" design system**: see the Brand section — indigo-violet accent, Geist, crisp/flat surfaces; MUI restyled via theme + Tailwind v4 tokens. The API was also moved to a repository/mapper/DTO clean-architecture layout in the same pass.
+14. **Customers** — CSV import (client-parsed) + manual add + list + soft-delete at `/dashboard/customers`; `customers` API module. See [docs/customers.md](docs/customers.md).
 
 ## File patterns to know
 
@@ -187,9 +196,9 @@ Project-level non-code work (external setup, security tasks, deferred tech debt,
 ## Working conventions
 
 - **PR-per-feature.** Push to GitHub, give the auto-returned `pull/new/<branch>` URL.
-- **Every PR before push:** `pnpm -r typecheck` + `pnpm -r build`. Smoke-test endpoints with `curl` (401 without auth, 403 without role, etc.).
+- **Every PR before push:** `pnpm -r typecheck` + `pnpm -r build`. Smoke-test endpoints with `curl` (401 without auth, 403 without role, etc.). **Update/add the relevant `docs/<area>.md`** (and its index line in the Feature docs section above).
 - **Auto mode is on by default.** Execute, don't ask routine questions. Make reasonable assumptions and proceed on low-risk work. Real architectural forks deserve a brief check-in.
 - **Commit messages:** imperative mood, explain the *why*, list smoke results, end with `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
-- **Don't write docs files** (README, *.md) unless explicitly asked. (This `CLAUDE.md` is the exception — it's the one Claude-context file.)
+- **Don't write *ad-hoc* docs files** unless asked. The two doc surfaces that *are* maintained: this `CLAUDE.md`, and the per-feature `docs/` (see the "Feature docs" section near the top) — a feature PR updates its `docs/<area>.md`. Nothing else (no scattered READMEs, no design notes).
 - **No comments in code** unless the *why* is non-obvious. Don't explain what well-named code already says.
 - **Don't add backward-compat shims**, dead-code re-exports, or "removed in PR #X" comments. Just delete cleanly.

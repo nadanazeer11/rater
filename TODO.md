@@ -63,6 +63,7 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 - **Replace `cuid()` IDs with `cuid2()` or UUID.** `cuid()` is deprecated upstream. Tradeoffs: cuid2 is shorter and unguessable, UUID v7 is sortable. Schema-wide change — do it before there's real data.
 - **Branded magic-link email** (Supabase Auth → Email Templates). Replace generic copy with rater-branded subject + body matching the dashboard look. Wire in once Postmark is configured as Supabase's custom SMTP.
 - **Branded review-request email template** for Postmark — same visual identity as the dashboard. Used for outbound campaign emails. Build when Postmark wiring lands.
+- **Backfill `docs/` for already-built areas.** The per-feature docs system landed with `feat/customers` (see CLAUDE.md → "Feature docs"); `docs/architecture.md` and `docs/customers.md` exist. Still to write — `auth.md`, `onboarding.md`, `invitations.md`, `google-reviews.md`, `design-system.md`, `dashboard.md` — write each the next time we touch that area (don't backfill in one big pass; the "why" is better recovered while working).
 
 ---
 
