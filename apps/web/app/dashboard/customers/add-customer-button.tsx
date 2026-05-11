@@ -33,7 +33,7 @@ export function AddCustomerButton({ locationId }: { locationId: string }) {
       await apiPost('/customers', {
         locationId,
         email: email.trim(),
-        name: name.trim() || undefined,
+        name: name.trim(),
         phone: phone.trim() || undefined,
       });
       setOpen(false);
@@ -64,9 +64,19 @@ export function AddCustomerButton({ locationId }: { locationId: string }) {
               </p>
               <h2 className="text-xl font-semibold tracking-tight text-ink">Add a customer</h2>
               <p className="text-sm leading-relaxed text-muted">
-                One person to send review requests to. Email is required.
+                One person to send review requests to. Name and email are required.
               </p>
             </div>
+            <TextField
+              label="Name"
+              required
+              fullWidth
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Layla Haddad"
+              autoFocus
+              disabled={submitting}
+            />
             <TextField
               label="Email"
               type="email"
@@ -75,15 +85,6 @@ export function AddCustomerButton({ locationId }: { locationId: string }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="customer@example.com"
-              autoFocus
-              disabled={submitting}
-            />
-            <TextField
-              label="Name"
-              fullWidth
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Optional"
               disabled={submitting}
             />
             <TextField
@@ -102,7 +103,9 @@ export function AddCustomerButton({ locationId }: { locationId: string }) {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={submitting || email.trim().length === 0}
+                disabled={
+                  submitting || name.trim().length === 0 || email.trim().length === 0
+                }
               >
                 {submitting ? 'Adding…' : 'Add customer'}
               </Button>

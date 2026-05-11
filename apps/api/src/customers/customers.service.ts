@@ -52,7 +52,7 @@ export class CustomersService {
     const created = await this.repo.create({
       locationId: dto.locationId,
       email,
-      name: normOptional(dto.name),
+      name: dto.name.trim(),
       phone: normOptional(dto.phone),
       importSource: 'manual',
     });

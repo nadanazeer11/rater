@@ -16,8 +16,8 @@ side of the loop only; campaigns + sending + the public rating page come in late
 
 **API** — `apps/api/src/customers/` (standard module → controller → service → repository → mapper → `dto/` shape; see architecture.md):
 - `GET /customers?locationId=` — list non-deleted customers, newest first.
-- `POST /customers` — add one (`importSource: 'manual'`).
-- `POST /customers/import` — bulk; body is `{ locationId, rows: [{ email, name?, phone? }] }` (pre-parsed rows, **not** a file — see below). Returns `{ received, imported, skippedDuplicates, skippedInvalid }`.
+- `POST /customers` — add one (`importSource: 'manual'`). **`name` and `email` are both required here** (the manual form should give you a real contact); `phone` optional.
+- `POST /customers/import` — bulk; body is `{ locationId, rows: [{ email, name?, phone? }] }` (pre-parsed rows, **not** a file — see below). **`name` is optional on import rows** (email-only exports are common; a nameless row still imports with `name = null`). Returns `{ received, imported, skippedDuplicates, skippedInvalid }`.
 - `DELETE /customers/:id` — soft delete.
 - **Authz:** every route is location-scoped. `CustomersService.assertMember` requires the caller to be a `LocationUser` of that location — *any* role (admins and members both manage customers). It also rejects an empty `locationId` (important: a missing `locationId` in a Prisma `where` is treated as "not filtered", which would leak other locations' customers — so the guard is load-bearing, not cosmetic).
 
