@@ -51,7 +51,7 @@ export function SignInForm() {
   }
 
   return (
-    <Stack component="form" onSubmit={handleSubmit} spacing={2}>
+    <Stack component="form" onSubmit={handleSubmit} spacing={2.5}>
       <TextField
         label="Email"
         type="email"
@@ -62,6 +62,7 @@ export function SignInForm() {
         placeholder="you@example.com"
         disabled={status === 'sending'}
         autoComplete="email"
+        helperText="No password — we'll email you a link that signs you in."
       />
       <Button
         type="submit"
@@ -70,7 +71,7 @@ export function SignInForm() {
         fullWidth
         disabled={status === 'sending' || email.length === 0}
       >
-        {status === 'sending' ? 'Sending…' : 'Send magic link'}
+        {status === 'sending' ? 'Sending…' : 'Send sign-in link'}
       </Button>
       {error && <Alert severity="error">{error}</Alert>}
     </Stack>

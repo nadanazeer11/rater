@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
+import { toApiClientError } from '@/lib/api-error';
+
+export { ApiClientError } from '@/lib/api-error';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -19,18 +22,13 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message ?? `Request failed: ${res.status}`);
-  }
+  if (!res.ok) throw await toApiClientError(res);
   return res.json() as Promise<T>;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
   const headers = await authHeaders();
   const res = await fetch(`${API_URL}${path}`, { headers });
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
+  if (!res.ok) throw await toApiClientError(res);
   return res.json() as Promise<T>;
 }

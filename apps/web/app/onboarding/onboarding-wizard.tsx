@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Box, Stack } from '@mui/material';
+import { Alert } from '@mui/material';
 import { apiPost } from '@/lib/api';
 import { BusinessStep, type LocationCount } from './business-step';
 import { GoogleMapsLoader } from './google-maps-loader';
@@ -61,22 +61,22 @@ export function OnboardingWizard({ onComplete }: Props) {
   }
 
   return (
-    <Stack spacing={4}>
-      <Stack direction="row" spacing={1} justifyContent="center">
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <Box
-            key={i}
-            sx={{
-              width: 32,
-              height: 4,
-              borderRadius: 2,
-              bgcolor:
-                i <= step ? 'primary.main' : 'action.disabledBackground',
-              transition: 'background-color 200ms ease',
-            }}
-          />
-        ))}
-      </Stack>
+    <div className="space-y-7">
+      <div className="space-y-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+          {step === 0 ? 'Welcome to Rater' : `Step ${step + 1} of ${totalSteps}`}
+        </p>
+        <div className="flex gap-1.5">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                i <= step ? 'bg-accent' : 'bg-zinc-200'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
 
       {step === 0 ? (
         <BusinessStep
@@ -98,6 +98,6 @@ export function OnboardingWizard({ onComplete }: Props) {
       )}
 
       {error && <Alert severity="error">{error}</Alert>}
-    </Stack>
+    </div>
   );
 }

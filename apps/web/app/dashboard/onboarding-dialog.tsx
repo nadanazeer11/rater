@@ -15,21 +15,7 @@ export function OnboardingDialog({ initiallyOpen }: { initiallyOpen: boolean }) 
   }
 
   return (
-    <Dialog
-      open={open}
-      fullWidth
-      maxWidth="sm"
-      disableEscapeKeyDown
-      slotProps={{
-        paper: {
-          sx: {
-            borderTop: '3px solid',
-            borderTopColor: 'primary.main',
-            overflow: 'hidden',
-          },
-        },
-      }}
-    >
+    <Dialog open={open} fullWidth maxWidth="sm" disableEscapeKeyDown>
       <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
         <OnboardingWizard onComplete={handleComplete} />
       </DialogContent>

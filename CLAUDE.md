@@ -21,13 +21,16 @@ The user has chosen to ship rating-based review gating despite Google's policy. 
 - **Hosting target:** Vercel (web) + Railway/Fly (api + worker)
 - **Monorepo:** Turborepo + pnpm. `apps/web`, `apps/api`, `apps/worker`, `packages/db`, `packages/types`, `packages/config`. All workspace packages scoped `@rater/*`.
 
-## Brand
+## Brand — "Iris" palette (redesigned)
 
-- **Primary:** `#9B8EC7` (soft purple)
-- **Secondary:** `#B8D4D9` (pale teal)
-- **Background default:** off-white tint (check `apps/web/lib/theme.ts` for current)
-- **Typography:** Inter via `next/font/google`
-- **Component conventions:** flat MUI buttons (no elevation, no all-caps, 8px radius), 12px Card radius, dialogs get a 3px primary-color top border as the brand accent
+- **Accent (single accent — keep it single):** `#4F46E5` indigo-violet, hover `#4338CA`, soft `#EEF2FF`. This is `palette.primary` in MUI.
+- **Neutrals:** cool zinc — bg `#FAFAFA`, surface `#FFFFFF`, border `#E4E4E7`, ink `#18181B`, muted `#52525B`, faint `#A1A1AA`
+- **Semantic:** star/amber `#F59E0B` (Google ratings + MUI `Rating`), danger/rose `#E11D48`, positive/emerald `#059669`
+- **Typography:** **Geist** Sans (everything) + Geist Mono (numerals, IDs, share-links) via the `geist` npm package, wired in `apps/web/app/layout.tsx` as `--font-geist-sans` / `--font-geist-mono`. **No Inter.**
+- **Surfaces:** crisp & flat — 1px hairline borders, near-zero tinted shadow, 12px card / 16px dialog radius. Dashboard lists use one bordered surface with `divide-y` rows, not stacked boxed cards.
+- **Two sources of truth, kept in sync:** `apps/web/lib/theme.ts` (MUI theme + component overrides) and the `@theme` block in `apps/web/app/globals.css` (Tailwind v4 tokens → `bg-accent`, `text-ink`, `border-border`, `rounded-card`, `font-mono`, `.tactile`, etc.). Change both.
+- **Styling split:** MUI for forms / inputs / dialogs / menus / autocomplete (styled via the theme + `sx`); Tailwind utilities for page shells, layouts, and plain HTML elements. Don't put Tailwind utility classes on MUI components — `enableCssLayer` puts MUI in a later cascade layer so it'd win anyway.
+- **Reusable bits:** `apps/web/components/` — `logo`, `star-rating` (`StarRating`/`Stars`), `brand-panel` + `auth-shell` (split-screen for sign-in / auth-error / invite), `empty-state`. The dashboard's own chrome lives in `apps/web/app/dashboard/`: `sidebar.tsx` (nav + locations switcher + add-location), `dashboard-header.tsx` (in-main top bar + account menu, owns sign-out), `location-detail.tsx`, `add-location-dialog.tsx` (controlled; `add-location-button.tsx` is a thin trigger wrapper).
 
 ## Repo + git/SSH setup (important)
 
@@ -86,11 +89,13 @@ All in main:
 4. Auth field rename (`clerkUserId` → `authUserId` UUID; dropped `clerkOrganizationId`)
 5. API wiring: `PrismaModule` (extends `PrismaClient` with lifecycle hooks), `/health` does real DB ping
 6. Frontend Supabase Auth: `@supabase/ssr` cookies, magic-link sign-in at `/sign-in`, protected `/dashboard`, middleware refreshes session + redirects
-7. MUI theme + Inter font
+7. MUI theme — "Iris" indigo-violet accent over zinc neutrals, Geist font, flat/crisp surfaces (see Brand section)
 8. JWT verification guard (`apps/api/src/auth/auth.guard.ts`) using `jose` + JWKS, `@CurrentUser()` decorator, `GET /me`
 9. **Onboarding flow** as a dialog forced open on `/dashboard` when `me.onboarded === false`. 2-step wizard: business name + 1/2/3 locations toggle, then Google Places picker per location. POST `/onboarding` creates `Business` + `Location[]` + `LocationUser[]` (admin) atomically.
 10. **Add-location dialog** on dashboard for existing admins. Reuses the same `LocationStep` + `GoogleMapsLoader`.
 11. **Team invitations** (`feat/team-invitations`, just merged): admin generates a tokenized link from a per-location button, recipient opens link → magic-link sent inline → bounces back to `/invite/[token]` signed in → auto-accepts → `/dashboard`. **Email delivery deferred** — admin gets a "Copy link" UI for now.
+12. **Dashboard shell + location selector**: sidebar-driven layout — left rail (nav, "coming soon" sections, switchable locations list with colored dots, add-location, promo) + in-main header (account menu, sign-out) + per-location detail view (hero with rating/address/role/scraping-baseline pills + 3 placeholder "Overview" stat cards). Selected location via `?location=<id>` searchParam (defaults to first). Backend: rejects adding a Location whose `googlePlaceId` already exists in the business, and rejects duplicate place ids within a single onboarding payload.
+13. **"Iris" design system**: see the Brand section — indigo-violet accent, Geist, crisp/flat surfaces; MUI restyled via theme + Tailwind v4 tokens. The API was also moved to a repository/mapper/DTO clean-architecture layout in the same pass.
 
 ## File patterns to know
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { CircularProgress, Stack } from '@mui/material';
 
 let loaderPromise: Promise<typeof google> | null = null;
 
@@ -34,9 +33,17 @@ export function GoogleMapsLoader({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <Stack alignItems="center" sx={{ py: 6 }}>
-        <CircularProgress size={32} />
-      </Stack>
+      <div className="space-y-6" aria-busy="true">
+        <div className="space-y-2">
+          <span className="block h-6 w-56 animate-pulse rounded bg-zinc-200/80" />
+          <span className="block h-4 w-72 animate-pulse rounded bg-zinc-200/60" />
+        </div>
+        <span className="block h-14 w-full animate-pulse rounded-lg bg-zinc-200/70" />
+        <div className="flex justify-between">
+          <span className="block h-9 w-16 animate-pulse rounded-lg bg-zinc-200/50" />
+          <span className="block h-9 w-24 animate-pulse rounded-lg bg-zinc-200/70" />
+        </div>
+      </div>
     );
   }
   return <>{children}</>;

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 import { AuthModule } from './auth/auth.module';
+import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { LocationsModule } from './locations/locations.module';
@@ -16,6 +17,7 @@ import { QueueModule } from './queue/queue.module';
       isGlobal: true,
       envFilePath: [join(__dirname, '../../../.env'), join(__dirname, '../../../.env.local')],
     }),
+    CommonModule,
     PrismaModule,
     QueueModule,
     AuthModule,

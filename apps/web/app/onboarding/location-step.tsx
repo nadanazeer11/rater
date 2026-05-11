@@ -4,13 +4,9 @@ import { useState } from 'react';
 import {
   Autocomplete,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   Rating,
-  Stack,
   TextField,
-  Typography,
 } from '@mui/material';
 import usePlacesAutocomplete, { getDetails } from 'use-places-autocomplete';
 
@@ -98,24 +94,26 @@ export function LocationStep({
   }
 
   return (
-    <Stack spacing={3}>
-      <Stack spacing={0.5}>
-        <Typography variant="h5">
+    <div className="space-y-6">
+      <div className="space-y-1.5">
+        <h2 className="text-xl font-semibold tracking-tight text-ink">
           {total > 1
             ? `Find location ${index + 1} of ${total} on Google`
             : 'Find your location on Google'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
+        </h2>
+        <p className="text-sm leading-relaxed text-muted">
           Search by business name and we&apos;ll fill in the rest.
-        </Typography>
-      </Stack>
+        </p>
+      </div>
 
       <Autocomplete<Option, false, false, true>
         freeSolo
         options={options}
         getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.label)}
         filterOptions={(x) => x}
-        loading={!ready || (status === 'OK' && data.length === 0 && value.length > 0)}
+        loading={
+          !ready || (status === 'OK' && data.length === 0 && value.length > 0)
+        }
         onInputChange={(_, val) => setValue(val)}
         onChange={(_, val) => {
           if (val && typeof val !== 'string') {
@@ -134,34 +132,33 @@ export function LocationStep({
       />
 
       {selected && (
-        <Card variant="outlined">
-          <CardContent>
-            <Stack spacing={1}>
-              <Typography variant="h6">{selected.name}</Typography>
-              {selected.address && (
-                <Typography variant="body2" color="text.secondary">
-                  {selected.address}
-                </Typography>
-              )}
-              {selected.rating !== undefined && (
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Rating
-                    value={selected.rating}
-                    precision={0.1}
-                    readOnly
-                    size="small"
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    {selected.rating.toFixed(1)} ({selected.totalReviews ?? 0} reviews)
-                  </Typography>
-                </Stack>
-              )}
-            </Stack>
-          </CardContent>
-        </Card>
+        <div className="rounded-card border border-border bg-bg p-4">
+          <p className="text-[15px] font-medium text-ink">{selected.name}</p>
+          {selected.address && (
+            <p className="mt-0.5 text-sm text-muted">{selected.address}</p>
+          )}
+          {selected.rating !== undefined && (
+            <div className="mt-2 flex items-center gap-2">
+              <Rating
+                value={selected.rating}
+                precision={0.1}
+                readOnly
+                size="small"
+              />
+              <span className="text-sm text-muted">
+                <span className="font-mono tabular-nums text-ink">
+                  {selected.rating.toFixed(1)}
+                </span>{' '}
+                <span className="font-mono tabular-nums">
+                  ({(selected.totalReviews ?? 0).toLocaleString()} reviews)
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
-      <Stack direction="row" spacing={2} justifyContent="space-between">
+      <div className="flex items-center justify-between gap-3">
         <Button variant="text" onClick={onBack} disabled={submitting}>
           Back
         </Button>
@@ -178,7 +175,7 @@ export function LocationStep({
             'Continue'
           )}
         </Button>
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }
