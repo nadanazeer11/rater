@@ -81,6 +81,12 @@ export class ReviewRequestsController {
     });
   }
 
+  @Post('by-token/:token/redirected')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  redirected(@Param('token') token: string): Promise<void> {
+    return this.service.markRedirectedToGoogle(token);
+  }
+
   @Post('by-token/:token/feedback')
   @HttpCode(HttpStatus.OK)
   submitFeedback(

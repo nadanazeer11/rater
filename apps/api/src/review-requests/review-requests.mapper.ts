@@ -9,6 +9,7 @@ export function toRequestSummary(r: RequestWithCustomer, rateUrl: string): Reque
     engagementStatus: r.engagementStatus,
     ratingStatus: r.ratingStatus,
     googleAttributionStatus: r.googleAttributionStatus,
+    redirectedToGoogle: r.redirectedToGoogleAt !== null,
     createdAt: r.createdAt,
     rateUrl,
   };

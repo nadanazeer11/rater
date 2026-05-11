@@ -81,6 +81,7 @@ export type RequestSummary = {
   engagementStatus: string;
   ratingStatus: string;
   googleAttributionStatus: string;
+  redirectedToGoogle: boolean;
   createdAt: string;
   rateUrl: string;
 };
@@ -111,6 +112,7 @@ export type PublicReviewRequest = {
   locationName: string;
   alreadyRated: boolean;
   rating: number | null;
+  googleReviewUrl: string | null;
 };
 
 /**

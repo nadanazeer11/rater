@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Alert, Button, Rating, TextField } from '@mui/material';
-import { apiPost } from '@/lib/api';
+import { apiPost, beaconRedirectedToGoogle } from '@/lib/api';
 
 type RateResult = { routedTo: 'google' | 'feedback'; googleReviewUrl: string | null };
 type Phase = 'rate' | 'redirecting' | 'feedback' | 'feedback-done' | 'thanks';
@@ -31,6 +31,7 @@ export function RateForm({
       if (res.routedTo === 'google') {
         if (res.googleReviewUrl) {
           setPhase('redirecting');
+          beaconRedirectedToGoogle(token);
           window.location.href = res.googleReviewUrl;
         } else {
           setPhase('thanks');

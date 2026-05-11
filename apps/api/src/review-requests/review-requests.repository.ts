@@ -151,6 +151,23 @@ export class ReviewRequestsRepository {
     });
   }
 
+  async markRedirectedToGoogleByToken(token: string): Promise<void> {
+    const req = await this.prisma.reviewRequest.findUnique({
+      where: { publicToken: token },
+      select: { id: true, redirectedToGoogleAt: true },
+    });
+    if (!req || req.redirectedToGoogleAt) return; // unknown token, or already recorded
+    await this.prisma.$transaction(async (tx) => {
+      await tx.reviewRequest.updateMany({
+        where: { id: req.id, redirectedToGoogleAt: null },
+        data: { redirectedToGoogleAt: new Date() },
+      });
+      await tx.event.create({
+        data: { reviewRequestId: req.id, eventType: 'redirected_to_google', payload: {} },
+      });
+    });
+  }
+
   createRating(
     reviewRequestId: string,
     data: {

@@ -19,6 +19,7 @@ export class RequestSummaryDto {
   engagementStatus!: string;
   ratingStatus!: string;
   googleAttributionStatus!: string;
+  redirectedToGoogle!: boolean;
   createdAt!: Date;
   rateUrl!: string;
 }
@@ -28,6 +29,7 @@ export class PublicReviewRequestDto {
   locationName!: string;
   alreadyRated!: boolean;
   rating!: number | null;
+  googleReviewUrl!: string | null;
 }
 
 export class RateResultDto {

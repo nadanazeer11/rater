@@ -15,17 +15,38 @@ const dateFmt = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-function RatingPill({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    not_rated: { label: 'awaiting rating', cls: 'border border-border text-faint' },
-    rated_positive: { label: 'rated · sent to Google', cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-    rated_negative: { label: 'rated · feedback', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-    feedback_submitted: { label: 'feedback received', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  };
-  const v = map[status] ?? { label: status, cls: 'border border-border text-faint' };
+const EMERALD = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+const AMBER = 'bg-amber-50 text-amber-700 border border-amber-200';
+const NEUTRAL = 'border border-border text-faint';
+
+function RatingPill({
+  status,
+  redirectedToGoogle,
+}: {
+  status: string;
+  redirectedToGoogle: boolean;
+}) {
+  let label: string;
+  let cls: string;
+  if (status === 'rated_positive') {
+    label = redirectedToGoogle ? 'rated · went to Google' : 'rated · sent to Google';
+    cls = redirectedToGoogle ? EMERALD : NEUTRAL;
+  } else if (status === 'rated_negative') {
+    label = 'rated · feedback';
+    cls = AMBER;
+  } else if (status === 'feedback_submitted') {
+    label = 'feedback received';
+    cls = AMBER;
+  } else if (status === 'not_rated') {
+    label = 'awaiting rating';
+    cls = NEUTRAL;
+  } else {
+    label = status;
+    cls = NEUTRAL;
+  }
   return (
-    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${v.cls}`}>
-      {v.label}
+    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -100,7 +121,7 @@ export default async function RequestsPage({
                       )}
                     </div>
                     <div className="sm:w-52 sm:shrink-0">
-                      <RatingPill status={r.ratingStatus} />
+                      <RatingPill status={r.ratingStatus} redirectedToGoogle={r.redirectedToGoogle} />
                     </div>
                     <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
                       {dateFmt.format(new Date(r.createdAt))}

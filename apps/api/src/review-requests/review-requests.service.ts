@@ -188,6 +188,7 @@ export class ReviewRequestsService {
       locationName: r.location.name,
       alreadyRated: r.ratingSubmission !== null,
       rating: r.ratingSubmission?.rating ?? null,
+      googleReviewUrl: r.location.googleReviewUrl,
     };
   }
 
@@ -214,6 +215,12 @@ export class ReviewRequestsService {
       routedTo,
       googleReviewUrl: routedTo === 'google' ? r.location.googleReviewUrl : null,
     };
+  }
+
+  /** Records that the customer clicked through to Google (idempotent — keeps the
+   *  first click time). No-ops on an unknown token. */
+  async markRedirectedToGoogle(token: string): Promise<void> {
+    await this.repo.markRedirectedToGoogleByToken(token);
   }
 
   async submitFeedback(token: string, dto: FeedbackDto): Promise<{ ok: true }> {
