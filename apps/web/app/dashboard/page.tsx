@@ -110,6 +110,16 @@ export default async function DashboardPage() {
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={1.5} alignItems="center">
+                        {loc.baselineScrapedAt === null &&
+                          Date.now() - new Date(loc.createdAt).getTime() <
+                            5 * 60_000 && (
+                            <Chip
+                              label="Scraping reviews…"
+                              size="small"
+                              variant="outlined"
+                              sx={{ borderStyle: 'dashed' }}
+                            />
+                          )}
                         {loc.role === 'admin' && (
                           <InviteTeammateButton
                             locationId={loc.id}

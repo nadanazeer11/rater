@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
 import { PrismaService } from '../prisma/prisma.service';
+import { ScrapeQueue } from '../queue/scrape.queue';
 import type { OnboardingDto } from './onboarding.dto';
 
 export type OnboardingResult = {
@@ -16,7 +17,10 @@ export type OnboardingResult = {
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scrapeQueue: ScrapeQueue,
+  ) {}
 
   async run(user: AuthUser, dto: OnboardingDto): Promise<OnboardingResult> {
     const existingMembership = await this.prisma.locationUser.findFirst({
@@ -28,7 +32,7 @@ export class OnboardingService {
       throw new ConflictException('User has already completed onboarding');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const business = await tx.business.create({
         data: { name: dto.businessName },
       });
@@ -69,7 +73,19 @@ export class OnboardingService {
       return {
         businessId: business.id,
         locationIds: locations.map((l) => l.id),
+        placeIds: locations.map((l) => l.googlePlaceId),
       };
     });
+
+    await Promise.all(
+      result.locationIds
+        .filter((_, i) => result.placeIds[i])
+        .map((id) => this.scrapeQueue.enqueueBaseline(id)),
+    );
+
+    return {
+      businessId: result.businessId,
+      locationIds: result.locationIds,
+    };
   }
 }

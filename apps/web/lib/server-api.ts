@@ -10,6 +10,8 @@ export type LocationSummary = {
   googleRating: number | null;
   googleReviewsCount: number | null;
   googleAddress: string | null;
+  baselineScrapedAt: string | null;
+  createdAt: string;
 };
 
 export type MeResponse = {
