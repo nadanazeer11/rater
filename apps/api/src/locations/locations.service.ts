@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
 import { ScrapeQueue } from '../queue/scrape.queue';
 import type { CreateLocationDto } from './dto/create-location.dto';
@@ -27,6 +31,16 @@ export class LocationsService {
     }
 
     const businessId = adminMembership.location.businessId;
+
+    const existing = await this.repo.findActiveByPlaceId(
+      businessId,
+      dto.googlePlaceId,
+    );
+    if (existing) {
+      throw new ConflictException(
+        `"${existing.name}" is already added to this business.`,
+      );
+    }
 
     const location = await this.repo.runInTransaction(async (tx) => {
       const loc = await this.repo.createLocationInTx(tx, {

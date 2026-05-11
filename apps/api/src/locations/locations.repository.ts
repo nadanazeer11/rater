@@ -19,6 +19,13 @@ export class LocationsRepository {
     });
   }
 
+  findActiveByPlaceId(businessId: string, googlePlaceId: string) {
+    return this.prisma.location.findFirst({
+      where: { businessId, googlePlaceId, deletedAt: null },
+      select: { id: true, name: true },
+    });
+  }
+
   createLocationInTx(tx: Tx, data: Prisma.LocationUncheckedCreateInput) {
     return tx.location.create({ data });
   }

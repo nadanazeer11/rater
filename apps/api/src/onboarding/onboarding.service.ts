@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
 import { ScrapeQueue } from '../queue/scrape.queue';
 import type { OnboardingDto } from './dto/onboarding.dto';
@@ -18,6 +23,13 @@ export class OnboardingService {
     const existingMembership = await this.repo.findAnyMembership(user.id);
     if (existingMembership) {
       throw new ConflictException('User has already completed onboarding');
+    }
+
+    const placeIds = dto.locations.map((l) => l.googlePlaceId);
+    if (new Set(placeIds).size !== placeIds.length) {
+      throw new BadRequestException(
+        'You picked the same Google place more than once. Each location must be unique.',
+      );
     }
 
     const created = await this.repo.runInTransaction(async (tx) => {

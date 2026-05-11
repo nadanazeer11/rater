@@ -30,7 +30,7 @@ The user has chosen to ship rating-based review gating despite Google's policy. 
 - **Surfaces:** crisp & flat — 1px hairline borders, near-zero tinted shadow, 12px card / 16px dialog radius. Dashboard lists use one bordered surface with `divide-y` rows, not stacked boxed cards.
 - **Two sources of truth, kept in sync:** `apps/web/lib/theme.ts` (MUI theme + component overrides) and the `@theme` block in `apps/web/app/globals.css` (Tailwind v4 tokens → `bg-accent`, `text-ink`, `border-border`, `rounded-card`, `font-mono`, `.tactile`, etc.). Change both.
 - **Styling split:** MUI for forms / inputs / dialogs / menus / autocomplete (styled via the theme + `sx`); Tailwind utilities for page shells, layouts, and plain HTML elements. Don't put Tailwind utility classes on MUI components — `enableCssLayer` puts MUI in a later cascade layer so it'd win anyway.
-- **Reusable bits:** `apps/web/components/` — `logo`, `star-rating` (`StarRating`/`Stars`), `brand-panel` + `auth-shell` (split-screen for sign-in / auth-error / invite), `empty-state`, `skeleton-rows`, `top-bar` (dashboard sticky header + account menu, owns sign-out).
+- **Reusable bits:** `apps/web/components/` — `logo`, `star-rating` (`StarRating`/`Stars`), `brand-panel` + `auth-shell` (split-screen for sign-in / auth-error / invite), `empty-state`. The dashboard's own chrome lives in `apps/web/app/dashboard/`: `sidebar.tsx` (nav + locations switcher + add-location), `dashboard-header.tsx` (in-main top bar + account menu, owns sign-out), `location-detail.tsx`, `add-location-dialog.tsx` (controlled; `add-location-button.tsx` is a thin trigger wrapper).
 
 ## Repo + git/SSH setup (important)
 
@@ -94,6 +94,8 @@ All in main:
 9. **Onboarding flow** as a dialog forced open on `/dashboard` when `me.onboarded === false`. 2-step wizard: business name + 1/2/3 locations toggle, then Google Places picker per location. POST `/onboarding` creates `Business` + `Location[]` + `LocationUser[]` (admin) atomically.
 10. **Add-location dialog** on dashboard for existing admins. Reuses the same `LocationStep` + `GoogleMapsLoader`.
 11. **Team invitations** (`feat/team-invitations`, just merged): admin generates a tokenized link from a per-location button, recipient opens link → magic-link sent inline → bounces back to `/invite/[token]` signed in → auto-accepts → `/dashboard`. **Email delivery deferred** — admin gets a "Copy link" UI for now.
+12. **Dashboard shell + location selector**: sidebar-driven layout — left rail (nav, "coming soon" sections, switchable locations list with colored dots, add-location, promo) + in-main header (account menu, sign-out) + per-location detail view (hero with rating/address/role/scraping-baseline pills + 3 placeholder "Overview" stat cards). Selected location via `?location=<id>` searchParam (defaults to first). Backend: rejects adding a Location whose `googlePlaceId` already exists in the business, and rejects duplicate place ids within a single onboarding payload.
+13. **"Iris" design system**: see the Brand section — indigo-violet accent, Geist, crisp/flat surfaces; MUI restyled via theme + Tailwind v4 tokens. The API was also moved to a repository/mapper/DTO clean-architecture layout in the same pass.
 
 ## File patterns to know
 
