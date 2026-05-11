@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { Alert, Button, Rating, TextField } from '@mui/material';
-import { apiPost, beaconRedirectedToGoogle } from '@/lib/api';
+import { beaconRedirectedToGoogle } from '@/lib/api';
+import { useSubmitFeedback, useSubmitRating } from '@/hooks/use-rate-submission';
 
-type RateResult = { routedTo: 'google' | 'feedback'; googleReviewUrl: string | null };
 type Phase = 'rate' | 'redirecting' | 'feedback' | 'feedback-done' | 'thanks';
 
 export function RateForm({
@@ -19,44 +19,32 @@ export function RateForm({
   const [rating, setRating] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('rate');
   const [text, setText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const submitRating = useSubmitRating(token);
+  const submitFeedback = useSubmitFeedback(token);
 
-  async function submitRating() {
+  function handleSubmitRating() {
     if (!rating) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await apiPost<RateResult>(`/review-requests/by-token/${token}/rate`, { rating });
-      if (res.routedTo === 'google') {
-        if (res.googleReviewUrl) {
-          setPhase('redirecting');
-          beaconRedirectedToGoogle(token);
-          window.location.href = res.googleReviewUrl;
+    submitRating.mutate(rating, {
+      onSuccess: (res) => {
+        if (res.routedTo === 'google') {
+          if (res.googleReviewUrl) {
+            setPhase('redirecting');
+            beaconRedirectedToGoogle(token);
+            window.location.href = res.googleReviewUrl;
+          } else {
+            setPhase('thanks');
+          }
         } else {
-          setPhase('thanks');
+          setPhase('feedback');
         }
-      } else {
-        setPhase('feedback');
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+      },
+    });
   }
 
-  async function submitFeedback() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await apiPost(`/review-requests/by-token/${token}/feedback`, { text: text.trim() });
-      setPhase('feedback-done');
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+  function handleSubmitFeedback() {
+    submitFeedback.mutate(text.trim(), {
+      onSuccess: () => setPhase('feedback-done'),
+    });
   }
 
   if (phase === 'redirecting' || phase === 'thanks') {
@@ -100,18 +88,20 @@ export function RateForm({
           fullWidth
           value={text}
           onChange={(e) => setText(e.target.value)}
-          disabled={submitting}
+          disabled={submitFeedback.isPending}
           autoFocus
         />
-        {error && <Alert severity="error">{error}</Alert>}
+        {submitFeedback.error && (
+          <Alert severity="error">{submitFeedback.error.message}</Alert>
+        )}
         <Button
           variant="contained"
           size="large"
           fullWidth
-          onClick={submitFeedback}
-          disabled={submitting || text.trim().length === 0}
+          onClick={handleSubmitFeedback}
+          disabled={submitFeedback.isPending || text.trim().length === 0}
         >
-          {submitting ? 'Sending…' : 'Send feedback'}
+          {submitFeedback.isPending ? 'Sending…' : 'Send feedback'}
         </Button>
       </div>
     );
@@ -133,15 +123,17 @@ export function RateForm({
           sx={{ fontSize: '3rem' }}
         />
       </div>
-      {error && <Alert severity="error">{error}</Alert>}
+      {submitRating.error && (
+        <Alert severity="error">{submitRating.error.message}</Alert>
+      )}
       <Button
         variant="contained"
         size="large"
         fullWidth
-        onClick={submitRating}
-        disabled={submitting || !rating}
+        onClick={handleSubmitRating}
+        disabled={submitRating.isPending || !rating}
       >
-        {submitting ? 'Submitting…' : 'Submit rating'}
+        {submitRating.isPending ? 'Submitting…' : 'Submit rating'}
       </Button>
     </div>
   );

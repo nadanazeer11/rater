@@ -13,7 +13,8 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
-import { apiPost } from '@/lib/api';
+import { useInviteTeammate } from '@/hooks/use-invite-teammate';
+import { useClipboard } from '@/hooks/use-clipboard';
 
 type Props = {
   locationId: string;
@@ -24,22 +25,14 @@ type Stage =
   | { kind: 'form' }
   | { kind: 'sent'; email: string; shareUrl: string; role: string };
 
-type CreateResponse = {
-  id: string;
-  email: string;
-  role: string;
-  shareUrl: string;
-  expiresAt: string;
-};
-
 export function InviteTeammateButton({ locationId, locationName }: Props) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'form' });
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'member' | 'admin'>('member');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const invite = useInviteTeammate();
+  const { copied, copy } = useClipboard();
+  const submitting = invite.isPending;
 
   function handleClose() {
     if (submitting) return;
@@ -48,42 +41,24 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
       setStage({ kind: 'form' });
       setEmail('');
       setRole('member');
-      setError(null);
-      setCopied(false);
+      invite.reset();
     }, 200);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await apiPost<CreateResponse>('/invitations', {
-        locationId,
-        email: email.trim(),
-        role,
-      });
-      setStage({
-        kind: 'sent',
-        email: result.email,
-        shareUrl: result.shareUrl,
-        role: result.role,
-      });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleCopy(url: string) {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard API unavailable — rare in modern browsers.
-    }
+    invite.mutate(
+      { locationId, email: email.trim(), role },
+      {
+        onSuccess: (result) =>
+          setStage({
+            kind: 'sent',
+            email: result.email,
+            shareUrl: result.shareUrl,
+            role: result.role,
+          }),
+      },
+    );
   }
 
   return (
@@ -130,7 +105,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
                 <MenuItem value="member">Member</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
               </TextField>
-              {error && <Alert severity="error">{error}</Alert>}
+              {invite.error && <Alert severity="error">{invite.error.message}</Alert>}
               <div className="flex items-center justify-between gap-3">
                 <Button
                   variant="text"
@@ -171,7 +146,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
                 <Tooltip title={copied ? 'Copied' : 'Copy link'}>
                   <IconButton
                     size="small"
-                    onClick={() => handleCopy(stage.shareUrl)}
+                    onClick={() => copy(stage.shareUrl)}
                     color={copied ? 'primary' : 'default'}
                   >
                     {copied ? (

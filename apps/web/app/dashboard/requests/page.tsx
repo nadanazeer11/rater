@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { fetchMe, fetchReviewRequests, type RequestSummary } from '@/lib/server-api';
+import { fetchMe, fetchReviewRequests } from '@/lib/server-api';
+import type { RequestSummary } from '@rater/types';
 import { EmptyState } from '@/components/empty-state';
 import { Stars } from '@/components/star-rating';
-import { Sidebar } from '../sidebar';
-import { DashboardHeader } from '../dashboard-header';
 import { RequestReviewButton } from './request-review-button';
 import { RequestReviewsCsvButton } from './request-reviews-csv-button';
 import { CopyLinkButton } from './copy-link-button';
@@ -62,86 +61,73 @@ export default async function RequestsPage({
   const selected =
     me.locations.find((l) => l.id === locationParam) ?? me.locations[0];
   if (!selected) redirect('/dashboard');
-  const canAddLocation = me.locations.some((l) => l.role === 'admin');
 
   const requests: RequestSummary[] = await fetchReviewRequests(selected.id);
 
   return (
-    <div className="flex min-h-dvh bg-bg">
-      <Sidebar
-        locations={me.locations}
-        currentLocationId={selected.id}
-        canAddLocation={canAddLocation}
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardHeader email={me.email} businessName={selected.business.name} />
-
-        <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-baseline gap-2.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-ink">Requests</h1>
-              {requests.length > 0 && (
-                <span className="font-mono text-sm text-faint">{requests.length}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <RequestReviewsCsvButton locationId={selected.id} />
-              <RequestReviewButton locationId={selected.id} />
-            </div>
-          </div>
-
-          <div className="mt-6">
-            {requests.length === 0 ? (
-              <EmptyState
-                title="No review requests yet"
-                description="Request a review from a customer and we'll generate a rating link to send them. A customer record is created automatically."
-                action={
-                  <div className="flex items-center gap-2">
-                    <RequestReviewsCsvButton locationId={selected.id} />
-                    <RequestReviewButton locationId={selected.id} />
-                  </div>
-                }
-              />
-            ) : (
-              <div className="overflow-hidden rounded-card border border-border bg-surface divide-y divide-border">
-                {requests.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-6"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-medium text-ink">
-                        {r.customer.name ?? r.customer.email}
-                      </p>
-                      {r.customer.name && (
-                        <p className="truncate font-mono text-sm text-muted">{r.customer.email}</p>
-                      )}
-                      {r.feedback && (
-                        <p
-                          title={r.feedback}
-                          className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-muted"
-                        >
-                          “{r.feedback}”
-                        </p>
-                      )}
-                    </div>
-                    <div className="sm:w-56 sm:shrink-0">
-                      <RatingCell r={r} />
-                    </div>
-                    <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
-                      {dateFmt.format(new Date(r.createdAt))}
-                    </div>
-                    <div className="sm:shrink-0">
-                      <CopyLinkButton rateUrl={r.rateUrl} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </main>
+    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2.5">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Requests</h1>
+          {requests.length > 0 && (
+            <span className="font-mono text-sm text-faint">{requests.length}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <RequestReviewsCsvButton locationId={selected.id} />
+          <RequestReviewButton locationId={selected.id} />
+        </div>
       </div>
-    </div>
+
+      <div className="mt-6">
+        {requests.length === 0 ? (
+          <EmptyState
+            title="No review requests yet"
+            description="Request a review from a customer and we'll generate a rating link to send them. A customer record is created automatically."
+            action={
+              <div className="flex items-center gap-2">
+                <RequestReviewsCsvButton locationId={selected.id} />
+                <RequestReviewButton locationId={selected.id} />
+              </div>
+            }
+          />
+        ) : (
+          <div className="overflow-hidden rounded-card border border-border bg-surface divide-y divide-border">
+            {requests.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-6"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-medium text-ink">
+                    {r.customer.name ?? r.customer.email}
+                  </p>
+                  {r.customer.name && (
+                    <p className="truncate font-mono text-sm text-muted">{r.customer.email}</p>
+                  )}
+                  {r.feedback && (
+                    <p
+                      title={r.feedback}
+                      className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-muted"
+                    >
+                      “{r.feedback}”
+                    </p>
+                  )}
+                </div>
+                <div className="sm:w-56 sm:shrink-0">
+                  <RatingCell r={r} />
+                </div>
+                <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
+                  {dateFmt.format(new Date(r.createdAt))}
+                </div>
+                <div className="sm:shrink-0">
+                  <CopyLinkButton rateUrl={r.rateUrl} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

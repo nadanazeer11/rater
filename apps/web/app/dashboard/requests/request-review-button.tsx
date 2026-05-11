@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Alert,
   Button,
@@ -13,21 +12,20 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
-import { apiPost } from '@/lib/api';
+import { useCreateReviewRequest } from '@/hooks/use-create-review-request';
+import { useClipboard } from '@/hooks/use-clipboard';
 
-type Created = { id: string; publicToken: string; rateUrl: string };
 type Stage = { kind: 'form' } | { kind: 'done'; rateUrl: string; email: string };
 
 export function RequestReviewButton({ locationId }: { locationId: string }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'form' });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const createRequest = useCreateReviewRequest();
+  const { copied, copy } = useClipboard();
+  const submitting = createRequest.isPending;
 
   function handleClose() {
     if (submitting) return;
@@ -37,41 +35,27 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
       setName('');
       setEmail('');
       setPhone('');
-      setError(null);
-      setCopied(false);
+      createRequest.reset();
     }, 200);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await apiPost<Created>('/review-requests', {
+    const trimmedEmail = email.trim();
+    createRequest.mutate(
+      {
         locationId,
         customer: {
           name: name.trim(),
-          email: email.trim(),
+          email: trimmedEmail,
           phone: phone.trim() || undefined,
         },
-      });
-      setStage({ kind: 'done', rateUrl: res.rateUrl, email: email.trim() });
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleCopy(url: string) {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard API unavailable — rare in modern browsers.
-    }
+      },
+      {
+        onSuccess: (res) =>
+          setStage({ kind: 'done', rateUrl: res.rateUrl, email: trimmedEmail }),
+      },
+    );
   }
 
   return (
@@ -125,7 +109,9 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
                   disabled={submitting}
                 />
               </div>
-              {error && <Alert severity="error">{error}</Alert>}
+              {createRequest.error && (
+                <Alert severity="error">{createRequest.error.message}</Alert>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <Button variant="text" onClick={handleClose} disabled={submitting}>
                   Cancel
@@ -163,7 +149,7 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
                 <Tooltip title={copied ? 'Copied' : 'Copy link'}>
                   <IconButton
                     size="small"
-                    onClick={() => handleCopy(stage.rateUrl)}
+                    onClick={() => copy(stage.rateUrl)}
                     color={copied ? 'primary' : 'default'}
                   >
                     {copied ? (

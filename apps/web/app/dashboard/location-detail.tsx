@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import type { LocationSummary } from '@/lib/server-api';
+import type { LocationSummary } from '@rater/types';
 import { InviteTeammateButton } from './invite-teammate-button';
 
 const FIVE_MINUTES = 5 * 60_000;

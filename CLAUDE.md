@@ -107,6 +107,7 @@ All in main:
 13. **"Iris" design system**: see the Brand section — indigo-violet accent, Geist, crisp/flat surfaces; MUI restyled via theme + Tailwind v4 tokens. The API was also moved to a repository/mapper/DTO clean-architecture layout in the same pass.
 14. **Customers** (read-only list at `/dashboard/customers`) — customers are created as a side effect of review requests, not added directly; `GET /customers` + `CustomersRepository`. See [docs/customers.md](docs/customers.md).
 15. **Review requests** — single + bulk "Request a review" (the `Customer` is upserted in the background; single = dialog, bulk = CSV); a default campaign is auto-created lazily; the public `/rate/[token]` page (rating ≥ `positiveRatingThreshold` → the Google review link, below → a private feedback form → `FeedbackSubmission`); a requests list; `customerCooldownDays` guard. **No email send yet** — the dashboard hands you the rate link to share. See [docs/review-requests.md](docs/review-requests.md).
+16. **Web data-layer cleanup** — `apps/web/app/dashboard/layout.tsx` + `dashboard-shell.tsx` make the sidebar/header a persistent shell (no more full-page reload / white flash when switching tabs or locations — location switch is now a soft `router.replace` of `?location=`). TanStack Query for mutations (one `useMutation` hook per write endpoint in `apps/web/hooks/`), reads stay server-rendered. Shared wire types in `@rater/types`. Request timeouts in the fetch helpers. See [docs/architecture.md](docs/architecture.md) → Web app.
 
 ## File patterns to know
 
@@ -116,8 +117,9 @@ All in main:
 - `apps/api/src/me/me.controller.ts` — single fetch returns `{ id, email, onboarded, locations[] }` for the dashboard
 - `apps/web/lib/supabase/{server,client,middleware}.ts` — three Supabase clients for the three Next.js contexts. Strict-typed cookie callbacks.
 - `apps/web/middleware.ts` — gates `/dashboard`, redirects to `/sign-in`. Calls `updateSession`.
-- `apps/web/lib/api.ts` — `apiPost`/`apiGet` browser helpers, attaches Bearer from current Supabase session
-- `apps/web/lib/server-api.ts` — `fetchMe()` and `fetchInvitation()` server-side helpers
+- `apps/web/lib/api.ts` — `apiPost`/`apiGet` browser helpers, attach Bearer from current Supabase session, 15s timeout. `apps/web/lib/server-api.ts` — server-component fetchers (`fetchMe` is `cache()`-memoized). Wire response shapes are shared types in `@rater/types` (`packages/types/src/api.ts`) — don't re-declare API response shapes in the web app.
+- `apps/web/app/providers.tsx` + `apps/web/lib/query-client.ts` — TanStack Query, used for **mutations** (the `apps/web/hooks/use-*.ts` `useMutation` wrappers, one per write endpoint; `onSuccess` `router.refresh()`es the server-rendered list). Reads stay server-side. Don't hand-roll `useState(submitting)`/`useState(error)` in components — use a hook.
+- `apps/web/app/dashboard/layout.tsx` + `dashboard-shell.tsx` — persistent shell (sidebar + header + onboarding dialog); survives tab/location switches so there's no full-page reload. Pages under it are thin server components that just render `<main>`. Location switch = soft `router.replace` of `?location=` (see `apps/web/hooks/use-selected-location.ts`), never a hard nav.
 - `apps/web/app/onboarding/{location-step,google-maps-loader,business-step,onboarding-wizard}.tsx` — reusable wizard pieces. Used by both onboarding modal and add-location dialog and (eventually) anywhere we pick a Google place.
 
 ## What's next

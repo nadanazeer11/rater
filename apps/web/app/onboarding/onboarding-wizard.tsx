@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Alert } from '@mui/material';
-import { apiPost } from '@/lib/api';
+import { useOnboarding } from '@/hooks/use-onboarding';
 import { BusinessStep, type LocationCount } from './business-step';
 import { GoogleMapsLoader } from './google-maps-loader';
 import { LocationStep, type LocationDraft } from './location-step';
@@ -18,8 +18,7 @@ export function OnboardingWizard({ onComplete }: Props) {
   const [businessName, setBusinessName] = useState('');
   const [locationCount, setLocationCount] = useState<LocationCount>(1);
   const [locations, setLocations] = useState<LocationDraft[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const onboarding = useOnboarding();
 
   const totalSteps = 1 + locationCount;
   const locationIndex = step - 1;
@@ -32,7 +31,7 @@ export function OnboardingWizard({ onComplete }: Props) {
     setStep(1);
   }
 
-  async function handleLocationNext(loc: LocationDraft) {
+  function handleLocationNext(loc: LocationDraft) {
     const next = [...locations];
     next[locationIndex] = loc;
     setLocations(next);
@@ -42,18 +41,10 @@ export function OnboardingWizard({ onComplete }: Props) {
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    try {
-      await apiPost('/onboarding', {
-        businessName,
-        locations: next,
-      });
-      onComplete();
-    } catch (e) {
-      setError((e as Error).message);
-      setSubmitting(false);
-    }
+    onboarding.mutate(
+      { businessName, locations: next },
+      { onSuccess: () => onComplete() },
+    );
   }
 
   function handleBack() {
@@ -92,12 +83,12 @@ export function OnboardingWizard({ onComplete }: Props) {
             total={locationCount}
             onBack={handleBack}
             onNext={handleLocationNext}
-            submitting={submitting && isLastLocation}
+            submitting={onboarding.isPending && isLastLocation}
           />
         </GoogleMapsLoader>
       )}
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {onboarding.error && <Alert severity="error">{onboarding.error.message}</Alert>}
     </div>
   );
 }

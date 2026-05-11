@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
@@ -12,14 +12,9 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import type { SvgIconComponent } from '@mui/icons-material';
-import type { LocationSummary } from '@/lib/server-api';
+import type { LocationSummary } from '@rater/types';
+import { useSelectedLocation } from '@/hooks/use-selected-location';
 import { AddLocationDialog } from './add-location-dialog';
-
-type Props = {
-  locations: LocationSummary[];
-  currentLocationId: string | null;
-  canAddLocation: boolean;
-};
 
 type NavItem = {
   label: string;
@@ -47,15 +42,13 @@ const DOT_COLORS = [
 
 const FIVE_MINUTES = 5 * 60_000;
 
-export function Sidebar({
-  locations,
-  currentLocationId,
-  canAddLocation,
-}: Props) {
-  const router = useRouter();
+export function Sidebar({ locations }: { locations: LocationSummary[] }) {
   const pathname = usePathname();
+  const { location, canAddLocation, selectLocation } =
+    useSelectedLocation(locations);
   const [addOpen, setAddOpen] = useState(false);
 
+  const currentLocationId = location?.id ?? null;
   const locationQuery = currentLocationId ? `?location=${currentLocationId}` : '';
 
   return (
@@ -136,7 +129,7 @@ export function Sidebar({
                 <button
                   key={loc.id}
                   type="button"
-                  onClick={() => router.push(`/dashboard?location=${loc.id}`)}
+                  onClick={() => selectLocation(loc.id)}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
                     active ? 'bg-accent-soft' : 'hover:bg-zinc-50'
                   }`}
