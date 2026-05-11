@@ -174,6 +174,7 @@ export class ReviewRequestsRepository {
       rating: number;
       routedTo: string;
       ratingStatus: string;
+      googleAttributionStatus: string;
       ipAddress: string | null;
       userAgent: string | null;
     },
@@ -190,7 +191,10 @@ export class ReviewRequestsRepository {
       });
       await tx.reviewRequest.update({
         where: { id: reviewRequestId },
-        data: { ratingStatus: data.ratingStatus },
+        data: {
+          ratingStatus: data.ratingStatus,
+          googleAttributionStatus: data.googleAttributionStatus,
+        },
       });
       await tx.event.create({
         data: {

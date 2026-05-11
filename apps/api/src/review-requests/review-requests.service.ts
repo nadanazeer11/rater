@@ -204,10 +204,15 @@ export class ReviewRequestsService {
     const routedTo: 'google' | 'feedback' =
       dto.rating >= r.location.positiveRatingThreshold ? 'google' : 'feedback';
     const ratingStatus = routedTo === 'google' ? 'rated_positive' : 'rated_negative';
+    // We routed them to Google (and there's a URL to land on) → the future
+    // attribution sync should check whether they actually posted a review.
+    const googleAttributionStatus =
+      routedTo === 'google' && r.location.googleReviewUrl ? 'pending_check' : 'not_applicable';
     await this.repo.createRating(r.id, {
       rating: dto.rating,
       routedTo,
       ratingStatus,
+      googleAttributionStatus,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
