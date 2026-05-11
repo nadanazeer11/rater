@@ -74,6 +74,61 @@ export async function fetchCustomers(
   return (await res.json()) as CustomerSummary[];
 }
 
+export type RequestSummary = {
+  id: string;
+  customer: { name: string | null; email: string };
+  deliveryStatus: string;
+  engagementStatus: string;
+  ratingStatus: string;
+  googleAttributionStatus: string;
+  createdAt: string;
+  rateUrl: string;
+};
+
+/** Review requests for a location. Throws an ApiClientError on api errors. */
+export async function fetchReviewRequests(
+  locationId: string,
+): Promise<RequestSummary[]> {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  const res = await fetch(
+    `${API_URL}/review-requests?locationId=${encodeURIComponent(locationId)}`,
+    {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as RequestSummary[];
+}
+
+export type PublicReviewRequest = {
+  businessName: string;
+  locationName: string;
+  alreadyRated: boolean;
+  rating: number | null;
+};
+
+/**
+ * Public lookup for the /rate/[token] page — no auth. Returns null on 404
+ * (invalid/expired token). Throws an ApiClientError on other api errors.
+ */
+export async function fetchReviewRequestByToken(
+  token: string,
+): Promise<PublicReviewRequest | null> {
+  const res = await fetch(
+    `${API_URL}/review-requests/by-token/${encodeURIComponent(token)}`,
+    { cache: 'no-store' },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as PublicReviewRequest;
+}
+
 export type InvitationDetails = {
   email: string;
   role: string;

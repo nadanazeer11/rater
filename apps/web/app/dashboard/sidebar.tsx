@@ -8,6 +8,7 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import RateReviewRoundedIcon from '@mui/icons-material/RateReviewRounded';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import type { SvgIconComponent } from '@mui/icons-material';
@@ -29,6 +30,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: HomeRoundedIcon, path: '/dashboard' },
+  { label: 'Requests', icon: SendRoundedIcon, path: '/dashboard/requests' },
   { label: 'Customers', icon: GroupsRoundedIcon, path: '/dashboard/customers' },
   { label: 'Campaigns', icon: CampaignRoundedIcon },
   { label: 'Reviews', icon: RateReviewRoundedIcon },

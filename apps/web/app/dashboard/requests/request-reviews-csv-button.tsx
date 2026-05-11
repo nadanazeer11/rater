@@ -11,9 +11,10 @@ const MAX_ROWS = 5000;
 type Row = { email: string; name?: string; phone?: string };
 type ImportResult = {
   received: number;
-  imported: number;
+  created: number;
   skippedDuplicates: number;
   skippedInvalid: number;
+  skippedCooldown: number;
 };
 type Stage =
   | { kind: 'pick' }
@@ -21,13 +22,14 @@ type Stage =
   | { kind: 'done'; result: ImportResult };
 
 function summarize(r: ImportResult): string {
-  const parts: string[] = [`${r.imported} added`];
-  if (r.skippedDuplicates > 0) parts.push(`${r.skippedDuplicates} already existed`);
+  const parts: string[] = [`${r.created} request${r.created === 1 ? '' : 's'} created`];
+  if (r.skippedCooldown > 0) parts.push(`${r.skippedCooldown} skipped (recently requested)`);
+  if (r.skippedDuplicates > 0) parts.push(`${r.skippedDuplicates} duplicate`);
   if (r.skippedInvalid > 0) parts.push(`${r.skippedInvalid} skipped (bad email)`);
   return parts.join(' · ');
 }
 
-export function ImportCustomersButton({ locationId }: { locationId: string }) {
+export function RequestReviewsCsvButton({ locationId }: { locationId: string }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -70,7 +72,9 @@ export function ImportCustomersButton({ locationId }: { locationId: string }) {
           return;
         }
         if (rows.length > MAX_ROWS) {
-          setError(`That file has ${rows.length.toLocaleString()} rows — the limit is ${MAX_ROWS.toLocaleString()} per import.`);
+          setError(
+            `That file has ${rows.length.toLocaleString()} rows — the limit is ${MAX_ROWS.toLocaleString()} per import.`,
+          );
           return;
         }
         setStage({ kind: 'preview', fileName: file.name, rows });
@@ -83,7 +87,7 @@ export function ImportCustomersButton({ locationId }: { locationId: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await apiPost<ImportResult>('/customers/import', { locationId, rows });
+      const result = await apiPost<ImportResult>('/review-requests/import', { locationId, rows });
       setStage({ kind: 'done', result });
       router.refresh();
     } catch (e) {
@@ -96,24 +100,26 @@ export function ImportCustomersButton({ locationId }: { locationId: string }) {
   return (
     <>
       <Button variant="outlined" onClick={() => setOpen(true)}>
-        Import CSV
+        Request from CSV
       </Button>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
           <div className="space-y-6">
             <div className="space-y-1.5">
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-                Import customers
+                Bulk review requests
               </p>
               <h2 className="text-xl font-semibold tracking-tight text-ink">
                 {stage.kind === 'done' ? 'Import complete' : 'Upload a CSV'}
               </h2>
               {stage.kind !== 'done' && (
                 <p className="text-sm leading-relaxed text-muted">
-                  Headers we read: <span className="font-mono text-ink">email</span> (required),{' '}
+                  One review request per row. Headers we read:{' '}
+                  <span className="font-mono text-ink">email</span> (required),{' '}
                   <span className="font-mono text-ink">name</span>,{' '}
-                  <span className="font-mono text-ink">phone</span> — case-insensitive. Duplicates
-                  and bad emails are skipped automatically.
+                  <span className="font-mono text-ink">phone</span> — case-insensitive. Customers
+                  are created automatically; duplicates, bad emails, and anyone requested recently
+                  are skipped.
                 </p>
               )}
             </div>
@@ -163,13 +169,15 @@ export function ImportCustomersButton({ locationId }: { locationId: string }) {
                   </table>
                 </div>
                 {stage.rows.length > 5 && (
-                  <p className="text-xs text-faint">…and {(stage.rows.length - 5).toLocaleString()} more.</p>
+                  <p className="text-xs text-faint">
+                    …and {(stage.rows.length - 5).toLocaleString()} more.
+                  </p>
                 )}
               </div>
             )}
 
             {stage.kind === 'done' && (
-              <Alert severity={stage.result.imported > 0 ? 'success' : 'info'}>
+              <Alert severity={stage.result.created > 0 ? 'success' : 'info'}>
                 {summarize(stage.result)}.
               </Alert>
             )}
@@ -197,8 +205,8 @@ export function ImportCustomersButton({ locationId }: { locationId: string }) {
                     disabled={submitting}
                   >
                     {submitting
-                      ? 'Importing…'
-                      : `Import ${stage.rows.length.toLocaleString()} ${stage.rows.length === 1 ? 'customer' : 'customers'}`}
+                      ? 'Creating…'
+                      : `Create ${stage.rows.length.toLocaleString()} request${stage.rows.length === 1 ? '' : 's'}`}
                   </Button>
                 </>
               ) : (

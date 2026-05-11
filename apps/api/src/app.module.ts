@@ -11,6 +11,7 @@ import { MeModule } from './me/me.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
+import { ReviewRequestsModule } from './review-requests/review-requests.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { QueueModule } from './queue/queue.module';
     OnboardingModule,
     LocationsModule,
     CustomersModule,
+    ReviewRequestsModule,
     InvitationsModule,
   ],
 })

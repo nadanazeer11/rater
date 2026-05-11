@@ -9,10 +9,9 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-/** One CSV row, pre-parsed on the client. Validation here is structural only —
- *  per-row content (bad emails, blanks) is sorted out in the service so a single
- *  junk row doesn't reject the whole import. */
-export class ImportCustomerRowDto {
+/** One pre-parsed CSV row. Structural validation only — bad emails / blanks are
+ *  sorted out per-row in the service so one junk row doesn't reject the import. */
+export class ImportReviewRequestRowDto {
   @IsString()
   @MaxLength(320)
   email!: string;
@@ -28,7 +27,7 @@ export class ImportCustomerRowDto {
   phone?: string;
 }
 
-export class ImportCustomersDto {
+export class ImportReviewRequestsDto {
   @IsString()
   @MinLength(1)
   @MaxLength(64)
@@ -37,6 +36,6 @@ export class ImportCustomersDto {
   @IsArray()
   @ArrayMaxSize(5000)
   @ValidateNested({ each: true })
-  @Type(() => ImportCustomerRowDto)
-  rows!: ImportCustomerRowDto[];
+  @Type(() => ImportReviewRequestRowDto)
+  rows!: ImportReviewRequestRowDto[];
 }

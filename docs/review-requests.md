@@ -1,0 +1,51 @@
+# Review requests
+
+> **Scope:** the `ReviewRequest` lifecycle and the public rating/feedback flow — creating requests (single + bulk CSV, which upsert the `Customer`), the `/rate/[publicToken]` page, routing a rating to Google vs a private feedback form. For the `Customer` model + repo see [docs/customers.md](customers.md). For the API layering see [docs/architecture.md](architecture.md). For Google-review *attribution* (matching a posted Google review back to a request) — not built yet; will get its own doc.
+> **Last updated:** 2026-05-11 (PR — `feat/review-requests`)
+
+## What it is
+
+The product's core loop. You "request a review" from a past customer (one at a time, or a CSV); rater generates a tokenized link (`/rate/<publicToken>`); the customer taps a 1–5 star rating; a rating ≥ the location's `positiveRatingThreshold` (default 4) sends them to the business's Google review URL, anything below shows a **private feedback form** that goes back to the business and never touches Google. There is **one entry point** — you create a *review request*, not a customer; the `Customer` record is upserted in the background (Birdeye/Podium model). Email delivery isn't wired yet — for now the dashboard hands you the rate link to send manually.
+
+## How it works
+
+**Single entry point / customer upsert.** `POST /review-requests` takes `{ locationId, customer: { name, email, phone? } }`. The service normalizes the email (trim+lowercase), looks for an existing non-deleted `Customer` at that location (`CustomersRepository.findActiveByEmail`) → reuses it; else creates one (`importSource: 'manual'`). Then it checks the **cooldown** (see below), then creates the `ReviewRequest` + an `Event{eventType:'review_request_created'}` in one transaction, and returns `{ id, publicToken, rateUrl }` (`rateUrl = ${NEXT_PUBLIC_APP_URL}/rate/${publicToken}`). The `ReviewRequest` carries the project's four orthogonal string status tracks — `deliveryStatus`, `engagementStatus`, `ratingStatus`, `googleAttributionStatus` — only `ratingStatus` and `engagementStatus` move in this PR (delivery moves with Postmark, attribution with the sync work).
+
+**Bulk** — `POST /review-requests/import` takes `{ locationId, rows: [{ email, name?, phone? }] }` (pre-parsed CSV rows, parsed client-side with `papaparse` — same reasoning as the old customer import: no multipart plumbing, plus an in-dialog preview; `name` is optional on rows). Per row: validate the email shape (bad → `skippedInvalid`), dedup within the payload (`skippedDuplicates`); then for the survivors, batch-load existing customers (`CustomersRepository.findManyByEmails`) and the customer-ids with a recent request (`ReviewRequestsRepository.findRecentRequestCustomerIds`); for each row, if the existing customer is in cooldown → `skippedCooldown`, else upsert the customer (`importSource: 'csv'`) and create the request. Returns `{ received, created, skippedDuplicates, skippedInvalid, skippedCooldown }` — and `received === created + the three skips`, by construction.
+
+**Cooldown.** Don't pester the same customer: a new request for a customer who already has a non-deleted `ReviewRequest` created within `Location.customerCooldownDays` (default 90) → `409` on the single path, `skippedCooldown` on the bulk path.
+
+**Default campaign.** `ReviewRequest.campaignId` is required, so each location needs a `Campaign`. We create one **lazily** on the first request — `getOrCreateDefaultCampaign(locationId)`: a `Campaign{name:'Review requests', isActive:true}` + one `CampaignStep{stepOrder:1, stepType:'initial', delayDays:0, delayAnchor:'request_created', requiredState:{}, subjectTemplate, bodyTemplate}` (placeholder template text — there's no template-rendering engine yet; that lands with Postmark). There's **no unique constraint** on campaigns, so two concurrent first-requests could create two campaigns — harmless, the earliest one wins on the next call; chose this over a migration.
+
+**Public token flow** (no auth — these routes have no `AuthGuard`):
+- `GET /review-requests/by-token/:token` → `{ businessName, locationName, alreadyRated, rating }`. Side effect: if `engagementStatus === 'not_opened'` it bumps it to `'landing_viewed'`.
+- `POST /review-requests/by-token/:token/rate` `{ rating: 1–5 }` → 404 if no such request, 409 if already rated. Computes `routedTo = rating >= location.positiveRatingThreshold ? 'google' : 'feedback'`, writes a `RatingSubmission{rating, routedTo, ipAddress, userAgent}` (ip/UA captured via `@Ip()` / the `user-agent` header — best-effort anti-fraud context), sets `ratingStatus = 'rated_positive' | 'rated_negative'`, logs an `Event`. Returns `{ routedTo, googleReviewUrl }` (the URL only when `routedTo === 'google'`; it can be `null` if the location has no Google place — the page just shows a thanks screen then).
+- `POST /review-requests/by-token/:token/feedback` `{ text }` → requires a `routedTo:'feedback'` rating and no existing feedback (else 409). Writes a `FeedbackSubmission`, sets `ratingStatus = 'feedback_submitted'`, logs an `Event`.
+- `RatingSubmission.reviewRequestId` and `FeedbackSubmission.reviewRequestId` are `@unique`, so the "already rated / already gave feedback" guards are also enforced at the DB.
+
+**Web.** `app/rate/[token]/page.tsx` (public — *not* under `/dashboard`, no auth; uses `fetchReviewRequestByToken`, the `<AuthShell>` brand shell, an `<EmptyState>` for an invalid token, a "you already rated" state, or `<RateForm>`). `rate-form.tsx` (client): an MUI `Rating` picker (themed amber via `lib/theme.ts`) → on submit, if `google` redirect to `googleReviewUrl` (or a thanks screen if none), if `feedback` reveal a feedback textarea → submit → thanks. `app/dashboard/requests/page.tsx` (authed): the requests list (customer, a rating-status pill, created date, a copy-the-rate-link button) or an `<EmptyState>`, with `<RequestReviewButton>` (single — form → on success shows the rate link with a copy button, like the invite share UI) and `<RequestReviewsCsvButton>` (the relocated `papaparse` dialog). The sidebar gained a "Requests" nav item.
+
+## Key files
+
+- `packages/db/prisma/schema.prisma` → `Campaign`, `CampaignStep`, `ReviewRequest`, `RatingSubmission`, `FeedbackSubmission`, `Event` — all pre-existing; **no migration in this PR**.
+- `apps/api/src/review-requests/{review-requests.module,review-requests.controller,review-requests.service,review-requests.repository,review-requests.mapper}.ts` + `dto/*`. Registered in `apps/api/src/app.module.ts`; imports `CustomersModule` to inject `CustomersRepository`.
+- `apps/web/app/rate/[token]/{page,rate-form}.tsx` — public rating/feedback page.
+- `apps/web/app/dashboard/requests/{page,request-review-button,request-reviews-csv-button,copy-link-button}.tsx`.
+- `apps/web/app/dashboard/sidebar.tsx` — "Requests" nav item. `apps/web/lib/server-api.ts` — `fetchReviewRequests`, `fetchReviewRequestByToken`, `RequestSummary`, `PublicReviewRequest`.
+
+## Conventions / gotchas
+
+- **One entry point.** There is no API to create a bare `Customer` — customers come into existence only via a review request (single or bulk). The `customers` module is now read-only (`GET /customers` + the list page); its repository's `findActiveByEmail` / `findManyByEmails` / `create` are *consumed by* `ReviewRequestsService`.
+- **Pass `locationId`.** Same as everywhere — `assertMember` rejects an empty `locationId` (a missing `locationId` in a Prisma `where` is "no filter" → would leak other tenants).
+- **`rateUrl` is built server-side** from `NEXT_PUBLIC_APP_URL` (default `http://localhost:3000`) — set this correctly in deployed environments or the links point at localhost.
+- **The bulk import counts always sum to `received`** — preserve that if you touch `ReviewRequestsService.importMany`.
+- **`googleReviewUrl` can be null** even on the `google` route — the rate page handles it (thanks screen, no redirect).
+
+## Not done yet
+
+- **No email send.** Nothing actually emails the rate link — the dashboard gives you the link to send manually. Postmark + delivery/open/bounce webhooks (which move `deliveryStatus`/`engagementStatus`) are a later PR.
+- **No follow-up steps.** Only the `initial` campaign step exists, and nothing schedules/executes steps — the `ReviewRequestStepExecution` model is unused. Follow-ups (e.g. "not opened after N days", "happy but no Google review") + a scheduler are a later PR.
+- **No campaign editor** — the default template is hardcoded and never rendered (no `{{...}}` engine yet).
+- **No attribution** — `googleAttributionStatus` never moves; matching a posted Google review back to a request comes with the review-sync work.
+- **No dashboard wiring** — the dashboard's three "Overview" stat cards are still placeholders (`0`); a fuller requests table (filtering, the engagement timeline) is deferred.
+- **No re-send / cancel** of a request; no per-request detail page.

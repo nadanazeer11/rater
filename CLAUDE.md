@@ -14,7 +14,8 @@ Detailed per-feature reference docs live in `docs/` (how *and why* things are bu
 
 Index:
 - [docs/architecture.md](docs/architecture.md) — repo layout, the API clean-architecture module pattern, BullMQ wiring, Prisma/DB conventions, Supabase auth, dev quirks. *Read this once; most feature docs assume it.*
-- [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `customers` API module, the `/dashboard/customers` page (CSV import + manual add + list + remove), dedup/soft-delete behaviour.
+- [docs/review-requests.md](docs/review-requests.md) — the `ReviewRequest` lifecycle: single + bulk "Request a review" (the `Customer` is upserted in the background), the lazily-created default campaign, the public `/rate/[token]` page, routing a rating to Google vs a private feedback form, the cooldown.
+- [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `CustomersRepository` (consumed by review-requests to upsert/look up customers), the read-only `/dashboard/customers` list. Customers are created via review requests, not directly.
 
 ## Stack
 
@@ -104,7 +105,8 @@ All in main:
 11. **Team invitations** (`feat/team-invitations`, just merged): admin generates a tokenized link from a per-location button, recipient opens link → magic-link sent inline → bounces back to `/invite/[token]` signed in → auto-accepts → `/dashboard`. **Email delivery deferred** — admin gets a "Copy link" UI for now.
 12. **Dashboard shell + location selector**: sidebar-driven layout — left rail (nav, "coming soon" sections, switchable locations list with colored dots, add-location, promo) + in-main header (account menu, sign-out) + per-location detail view (hero with rating/address/role/scraping-baseline pills + 3 placeholder "Overview" stat cards). Selected location via `?location=<id>` searchParam (defaults to first). Backend: rejects adding a Location whose `googlePlaceId` already exists in the business, and rejects duplicate place ids within a single onboarding payload.
 13. **"Iris" design system**: see the Brand section — indigo-violet accent, Geist, crisp/flat surfaces; MUI restyled via theme + Tailwind v4 tokens. The API was also moved to a repository/mapper/DTO clean-architecture layout in the same pass.
-14. **Customers** — CSV import (client-parsed) + manual add + list + soft-delete at `/dashboard/customers`; `customers` API module. See [docs/customers.md](docs/customers.md).
+14. **Customers** (read-only list at `/dashboard/customers`) — customers are created as a side effect of review requests, not added directly; `GET /customers` + `CustomersRepository`. See [docs/customers.md](docs/customers.md).
+15. **Review requests** — single + bulk "Request a review" (the `Customer` is upserted in the background; single = dialog, bulk = CSV); a default campaign is auto-created lazily; the public `/rate/[token]` page (rating ≥ `positiveRatingThreshold` → the Google review link, below → a private feedback form → `FeedbackSubmission`); a requests list; `customerCooldownDays` guard. **No email send yet** — the dashboard hands you the rate link to share. See [docs/review-requests.md](docs/review-requests.md).
 
 ## File patterns to know
 
@@ -118,65 +120,15 @@ All in main:
 - `apps/web/lib/server-api.ts` — `fetchMe()` and `fetchInvitation()` server-side helpers
 - `apps/web/app/onboarding/{location-step,google-maps-loader,business-step,onboarding-wizard}.tsx` — reusable wizard pieces. Used by both onboarding modal and add-location dialog and (eventually) anywhere we pick a Google place.
 
-## What's next: Path A (real Google data on the dashboard)
+## What's next
 
-### PR #11 — persist Google rating + reviews count + address on Location (~1 hour)
+The core review-request loop is in (single + bulk request creation, the public rating page — see [docs/review-requests.md](docs/review-requests.md)). Roughly in order, each its own PR + `docs/*.md`:
 
-**Goal:** Every location card shows live Google ★ rating + review count + address. No background jobs, no Outscraper. We already fetch these in the onboarding Places picker — just save them.
-
-**Schema:** add to `Location`:
-```prisma
-googleRating       Float?  @map("google_rating")
-googleReviewsCount Int?    @map("google_reviews_count")
-googleAddress      String? @map("google_address")
-```
-Migration name: `add_google_metadata`. Use the diff-and-deploy pattern.
-
-**Backend:**
-- Extend `OnboardingDto` and `CreateLocationDto` with the new optional fields
-- Update `OnboardingService` and `LocationsService` to persist them
-- Extend `/me` location summary in `apps/api/src/me/me.controller.ts` to include them
-
-**Frontend:**
-- `apps/web/app/onboarding/location-step.tsx` already pulls rating/total/address from Places `getDetails`. Plumb them through `LocationDraft` (`onboarding-wizard.tsx`) and `add-location-button.tsx` to the POST body
-- Extend `LocationSummary` in `apps/web/lib/server-api.ts`
-- `apps/web/app/dashboard/page.tsx` — render under the location name (small ★/count/address row)
-
-**Verify:** new locations show the data; existing ones don't (acceptable, no backfill)
-
-### PR #12 — Outscraper baseline scrape via BullMQ (~half day)
-
-**Goal:** When a Location is created with a `googlePlaceId`, queue a worker job that pulls the full Google review history into `GoogleReview` + `GoogleReviewSnapshot` (with `is_baseline: true`). Foundation for attribution later.
-
-**External setup the user must do first:**
-1. **Outscraper** — sign up at outscraper.com (free $25 credit). Get API key from Profile → API and Integrations. `OUTSCRAPER_API_KEY=` in `.env`.
-2. **Upstash Redis** — sign up at upstash.com, create DB in `eu-west-1`. `REDIS_URL=` in `.env` (looks like `rediss://default:<token>@<host>.upstash.io:6379`).
-
-**Schema:** add `Location.baselineScrapedAt DateTime? @map("baseline_scraped_at")` as completion marker.
-
-**Backend (`apps/api`):**
-- Install `bullmq`
-- `apps/api/src/queue/queue.module.ts` — global BullMQ wiring against `REDIS_URL`
-- `apps/api/src/queue/scrape.queue.ts` — producer that adds `baseline-scrape` jobs `{ locationId }`
-- Call from `OnboardingService.run` and `LocationsService.createForCurrentBusiness` after the transaction commits
-
-**Worker (`apps/worker`):**
-- Install `bullmq`, `axios`, add `@rater/db` workspace dep
-- Bootstrap NestJS standalone, register a BullMQ Worker on `baseline-scrape`
-- `apps/worker/src/scrape/outscraper.service.ts` — wraps Outscraper Google Maps Reviews API (`POST https://api.app.outscraper.com/maps/reviews-v3?query=<place_id>&reviewsLimit=0&async=true`). For MVP: synchronous polling on the results endpoint until done.
-- `apps/worker/src/scrape/scrape.processor.ts`:
-  1. Open `ReviewSync` row (`syncType: 'baseline'`)
-  2. Call Outscraper, fetch all reviews
-  3. Compute aggregate (count, average, distribution)
-  4. Insert `GoogleReviewSnapshot` (`is_baseline: true`)
-  5. Bulk insert `GoogleReview` rows. For `external_id`: use Google's `review_id` if returned, fallback to `sha256(reviewer_name + text + posted_at)`. Set `firstSeenInSyncId` to this sync's id.
-  6. `Location.baselineScrapedAt = now()`
-  7. Close `ReviewSync`: `status: 'completed'`, `completedAt`, counts
-  8. **No side effects:** baseline scrape MUST NOT trigger attribution, notifications, or events on `review_requests` — purely inventory
-
-**Frontend:** show `baselineScrapedAt`-aware state on dashboard cards (e.g., "X reviews when you joined" line). Optional: small "Scraping reviews…" indicator on cards <60s old without a baseline yet.
-
-**Verify:** new location → BullMQ job queued → worker (`pnpm --filter @rater/worker dev`) processes → `GoogleReviewSnapshot` (`is_baseline: true`) and `GoogleReview` rows in Supabase. Outscraper dashboard shows the API call. Re-running scrape doesn't dupe rows (the `(locationId, externalId)` unique constraint on `GoogleReview` enforces this).
+1. **Actual email send + Postmark** — wire `Postmark` (per-location server token + from-domain in a Settings page), swap the "copy the link" UI for a real send via the worker, add the Postmark webhook to move `deliveryStatus` / `engagementStatus`.
+2. **Follow-up steps + scheduler** — beyond the `initial` step: `ReviewRequestStepExecution` + a BullMQ scheduler that fires steps when the `CampaignStep.requiredState` predicate matches (e.g. "not opened after N days", "rated positive but no Google review yet").
+3. **Campaign editor** — UI to edit the campaign's step templates / delays (with a `{{...}}` rendering engine).
+4. **Dashboard wiring** — turn the three "Overview" stat cards into real counts; a fuller requests table (filters, engagement timeline).
+5. **Google-review attribution** — incremental review syncs (the `ReviewSync` machinery exists), matching a posted Google review back to a request, a manual-confirmation queue for low-confidence matches.
 
 ## Required external services (status)
 
@@ -184,9 +136,9 @@ Migration name: `add_google_metadata`. Use the diff-and-deploy pattern.
 |---|---|---|
 | Supabase | ✅ wired | DB + Auth |
 | Google Places API | ✅ wired | Onboarding location picker (`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`) |
-| Outscraper | ⏳ needed for PR #12 | Baseline + future Google review syncs |
-| Upstash Redis | ⏳ needed for PR #12 | BullMQ queue backend |
-| Postmark | ⏳ deferred | Email delivery (invitations + review-request emails) |
+| Outscraper | ✅ wired (stubbed locally if `OUTSCRAPER_API_KEY` unset) | Baseline scrape + future Google review syncs |
+| Upstash Redis | ✅ wired (`REDIS_URL`; the API producer no-ops if unset) | BullMQ queue backend |
+| Postmark | ⏳ next up | Email delivery (review-request emails; later: branded magic-link) |
 | Sentry / BetterStack | ⏳ deferred | Observability |
 
 ## TODO.md

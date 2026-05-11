@@ -1,11 +1,9 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { fetchCustomers, fetchMe, type CustomerSummary } from '@/lib/server-api';
 import { EmptyState } from '@/components/empty-state';
 import { Sidebar } from '../sidebar';
 import { DashboardHeader } from '../dashboard-header';
-import { AddCustomerButton } from './add-customer-button';
-import { ImportCustomersButton } from './import-customers-button';
-import { CustomerRowActions } from './customer-row-actions';
 
 type SearchParams = Promise<{ location?: string }>;
 
@@ -45,6 +43,7 @@ export default async function CustomersPage({
     me.locations.find((l) => l.id === locationParam) ?? me.locations[0];
   if (!selected) redirect('/dashboard');
   const canAddLocation = me.locations.some((l) => l.role === 'admin');
+  const requestsHref = `/dashboard/requests?location=${selected.id}`;
 
   const customers: CustomerSummary[] = await fetchCustomers(selected.id);
 
@@ -67,22 +66,28 @@ export default async function CustomersPage({
                 <span className="font-mono text-sm text-faint">{customers.length}</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <ImportCustomersButton locationId={selected.id} />
-              <AddCustomerButton locationId={selected.id} />
-            </div>
+            {customers.length > 0 && (
+              <Link
+                href={requestsHref}
+                className="tactile rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+              >
+                Request reviews
+              </Link>
+            )}
           </div>
 
           <div className="mt-6">
             {customers.length === 0 ? (
               <EmptyState
                 title="No customers yet"
-                description="Upload a CSV of past customers, or add one by hand — they're who your review requests go to."
+                description="Customers show up here once you've requested a review from them."
                 action={
-                  <div className="flex items-center gap-2">
-                    <ImportCustomersButton locationId={selected.id} />
-                    <AddCustomerButton locationId={selected.id} />
-                  </div>
+                  <Link
+                    href={requestsHref}
+                    className="tactile rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+                  >
+                    Request a review
+                  </Link>
                 }
               />
             ) : (
@@ -107,9 +112,6 @@ export default async function CustomersPage({
                     </div>
                     <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
                       {dateFmt.format(new Date(c.importedAt))}
-                    </div>
-                    <div className="sm:shrink-0">
-                      <CustomerRowActions customerId={c.id} customerLabel={c.name ?? c.email} />
                     </div>
                   </div>
                 ))}
