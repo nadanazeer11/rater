@@ -231,6 +231,11 @@ model ReviewRequest {
   googleAttributionStatus String @default("not_applicable") @map("google_attribution_status")
   // 'not_applicable' | 'pending_check' | 'confirmed_posted' | 'posted_low_confidence' | 'not_posted'
 
+  // Set when the customer actually clicks through to Google after a positive
+  // rating (or the "post on Google" link on the already-rated screen). Null =
+  // never clicked. The Event log also gets a `redirected_to_google` event.
+  redirectedToGoogleAt DateTime? @map("redirected_to_google_at")
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")

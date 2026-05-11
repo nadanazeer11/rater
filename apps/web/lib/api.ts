@@ -32,3 +32,15 @@ export async function apiGet<T>(path: string): Promise<T> {
   if (!res.ok) throw await toApiClientError(res);
   return res.json() as Promise<T>;
 }
+
+/** Fire-and-forget ping that the customer clicked through to Google. Uses
+ *  `sendBeacon` so it survives the navigation that immediately follows. */
+export function beaconRedirectedToGoogle(token: string): void {
+  try {
+    navigator.sendBeacon(
+      `${API_URL}/review-requests/by-token/${encodeURIComponent(token)}/redirected`,
+    );
+  } catch {
+    // best-effort — never block the redirect on this
+  }
+}
