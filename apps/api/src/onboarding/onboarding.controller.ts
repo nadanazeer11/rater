@@ -2,8 +2,9 @@ import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.type';
-import { OnboardingDto } from './onboarding.dto';
-import { OnboardingService, type OnboardingResult } from './onboarding.service';
+import { OnboardingDto } from './dto/onboarding.dto';
+import type { OnboardingResultDto } from './dto/onboarding-result.response';
+import { OnboardingService } from './onboarding.service';
 
 @Controller('onboarding')
 @UseGuards(AuthGuard)
@@ -12,10 +13,10 @@ export class OnboardingController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(
+  create(
     @CurrentUser() user: AuthUser,
     @Body() dto: OnboardingDto,
-  ): Promise<OnboardingResult> {
+  ): Promise<OnboardingResultDto> {
     return this.service.run(user, dto);
   }
 }

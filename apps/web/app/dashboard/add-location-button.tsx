@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Button,
-  Dialog,
-  DialogContent,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, Dialog, DialogContent } from '@mui/material';
 import { apiPost } from '@/lib/api';
 import { GoogleMapsLoader } from '../onboarding/google-maps-loader';
 import { LocationStep, type LocationDraft } from '../onboarding/location-step';
@@ -42,31 +35,15 @@ export function AddLocationButton() {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)}>
+      <Button variant="contained" onClick={() => setOpen(true)}>
         Add location
       </Button>
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        fullWidth
-        maxWidth="sm"
-        slotProps={{
-          paper: {
-            sx: {
-              borderTop: '3px solid',
-              borderTopColor: 'primary.main',
-            },
-          },
-        }}
-      >
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
-          <Stack spacing={3}>
-            <Stack spacing={0.5}>
-              <Typography variant="h5">Add a location</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Find it on Google and we&apos;ll add it to your business.
-              </Typography>
-            </Stack>
+          <div className="space-y-6">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+              New location
+            </p>
             <GoogleMapsLoader>
               <LocationStep
                 index={0}
@@ -77,7 +54,7 @@ export function AddLocationButton() {
               />
             </GoogleMapsLoader>
             {error && <Alert severity="error">{error}</Alert>}
-          </Stack>
+          </div>
         </DialogContent>
       </Dialog>
     </>

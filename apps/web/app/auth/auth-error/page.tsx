@@ -1,31 +1,24 @@
 import Link from 'next/link';
-import { Button, Container, Paper, Stack, Typography } from '@mui/material';
+import { Button } from '@mui/material';
+import { AuthShell } from '@/components/auth-shell';
 
 export default function AuthErrorPage() {
   return (
-    <Container
-      maxWidth="sm"
-      sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', py: 4 }}
-    >
-      <Paper
-        sx={{
-          p: { xs: 3, sm: 4 },
-          width: '100%',
-          border: '1px solid',
-          borderColor: 'divider',
-          textAlign: 'center',
-        }}
-      >
-        <Stack spacing={3} alignItems="center">
-          <Typography variant="h5">Sign-in failed</Typography>
-          <Typography variant="body2" color="text.secondary">
-            The link may have expired or already been used.
-          </Typography>
-          <Button component={Link} href="/sign-in" variant="text">
-            Try again
-          </Button>
-        </Stack>
-      </Paper>
-    </Container>
+    <AuthShell>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          Sign-in failed
+        </h1>
+        <p className="text-sm leading-relaxed text-muted">
+          That link may have expired or already been used. Request a fresh one
+          and you&apos;ll be in.
+        </p>
+      </div>
+      <div className="mt-8">
+        <Button component={Link} href="/sign-in" variant="contained" size="large" fullWidth>
+          Back to sign in
+        </Button>
+      </div>
+    </AuthShell>
   );
 }

@@ -1,16 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Alert,
-  Button,
-  Chip,
-  CircularProgress,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, CircularProgress } from '@mui/material';
 import { apiPost } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import type { InvitationDetails } from '@/lib/server-api';
@@ -21,6 +14,14 @@ type Props = {
   currentUserEmail: string | null;
 };
 
+function RolePill({ role }: { role: string }) {
+  return (
+    <span className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] font-medium text-accent">
+      {role}
+    </span>
+  );
+}
+
 export function InviteAcceptCard({
   token,
   invitation,
@@ -30,49 +31,56 @@ export function InviteAcceptCard({
 
   // Non-pending: short-circuit before any of the action branches.
   if (invitation.status !== 'pending') {
+    const title =
+      invitation.status === 'accepted'
+        ? 'Invitation already accepted'
+        : invitation.status === 'expired'
+          ? 'This invitation has expired'
+          : 'This invitation has been revoked';
     return (
-      <Stack spacing={2} alignItems="center" textAlign="center">
-        <Typography variant="h5">
-          {invitation.status === 'accepted'
-            ? 'Invitation already accepted'
-            : invitation.status === 'expired'
-              ? 'This invitation has expired'
-              : 'This invitation has been revoked'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Ask {invitation.invitedBy?.email ?? 'the inviter'} for a new link.
-        </Typography>
-        <Button component={Link} href="/" variant="text">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {title}
+          </h1>
+          <p className="text-sm leading-relaxed text-muted">
+            Ask {invitation.invitedBy?.email ?? 'whoever invited you'} for a new
+            link.
+          </p>
+        </div>
+        <Button component={Link} href="/" variant="contained" size="large" fullWidth>
           Back to home
         </Button>
-      </Stack>
+      </div>
     );
   }
 
   const inviterDisplay =
     invitation.invitedBy?.name ?? invitation.invitedBy?.email ?? 'A teammate';
-  const headline = (
-    <Stack spacing={1.5} textAlign="center">
-      <Typography variant="h5">
+
+  const headline: ReactNode = (
+    <div className="space-y-2">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">
         Join {invitation.location.businessName}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {inviterDisplay} invited you to <strong>{invitation.location.name}</strong>{' '}
-        as a <Chip label={invitation.role} size="small" sx={{ ml: 0.5 }} />
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
+      </h1>
+      <p className="text-sm leading-relaxed text-muted">
+        {inviterDisplay} invited you to{' '}
+        <span className="font-medium text-ink">{invitation.location.name}</span>{' '}
+        as <RolePill role={invitation.role} />
+      </p>
+      <p className="font-mono text-[11px] text-faint">
         Sent to {invitation.email}
-      </Typography>
-    </Stack>
+      </p>
+    </div>
   );
 
   // Branch 1: not signed in → send magic link directly using the invitation's email.
   if (!currentUserEmail) {
     return (
-      <Stack spacing={3}>
+      <div className="space-y-7">
         {headline}
         <SendSignInLink token={token} email={invitation.email} />
-      </Stack>
+      </div>
     );
   }
 
@@ -84,25 +92,27 @@ export function InviteAcceptCard({
       router.refresh();
     }
     return (
-      <Stack spacing={3}>
+      <div className="space-y-7">
         {headline}
-        <Alert severity="warning">
-          You&apos;re signed in as <strong>{currentUserEmail}</strong>, but this
-          invitation was sent to <strong>{invitation.email}</strong>.
-        </Alert>
-        <Button onClick={handleSignOut} variant="outlined" fullWidth>
-          Sign out and accept as {invitation.email}
-        </Button>
-      </Stack>
+        <div className="space-y-4">
+          <Alert severity="warning">
+            You&apos;re signed in as <strong>{currentUserEmail}</strong>, but
+            this invitation was sent to <strong>{invitation.email}</strong>.
+          </Alert>
+          <Button onClick={handleSignOut} variant="contained" size="large" fullWidth>
+            Sign out and accept as {invitation.email}
+          </Button>
+        </div>
+      </div>
     );
   }
 
   // Branch 3: signed in with the right email → auto-accept.
   return (
-    <Stack spacing={3}>
+    <div className="space-y-7">
       {headline}
       <AutoAccept token={token} />
-    </Stack>
+    </div>
   );
 }
 
@@ -140,7 +150,7 @@ function SendSignInLink({ token, email }: { token: string; email: string }) {
   }
 
   return (
-    <>
+    <div className="space-y-4">
       <Button
         onClick={handleClick}
         variant="contained"
@@ -148,12 +158,10 @@ function SendSignInLink({ token, email }: { token: string; email: string }) {
         fullWidth
         disabled={status === 'sending'}
       >
-        {status === 'sending'
-          ? 'Sending…'
-          : `Send sign-in link to ${email}`}
+        {status === 'sending' ? 'Sending…' : `Send sign-in link to ${email}`}
       </Button>
       {error && <Alert severity="error">{error}</Alert>}
-    </>
+    </div>
   );
 }
 
@@ -186,7 +194,7 @@ function AutoAccept({ token }: { token: string }) {
 
   if (error) {
     return (
-      <>
+      <div className="space-y-4">
         <Alert severity="error">{error}</Alert>
         <Button
           onClick={accept}
@@ -197,16 +205,14 @@ function AutoAccept({ token }: { token: string }) {
         >
           {retrying ? <CircularProgress size={20} color="inherit" /> : 'Try again'}
         </Button>
-      </>
+      </div>
     );
   }
 
   return (
-    <Stack alignItems="center" spacing={1.5} sx={{ py: 2 }}>
-      <CircularProgress size={28} />
-      <Typography variant="body2" color="text.secondary">
-        Joining…
-      </Typography>
-    </Stack>
+    <div className="flex items-center gap-3 rounded-card border border-border bg-surface px-4 py-4 text-sm text-muted">
+      <CircularProgress size={18} color="primary" />
+      Joining…
+    </div>
   );
 }

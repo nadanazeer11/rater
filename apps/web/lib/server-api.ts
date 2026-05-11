@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { toApiClientError } from '@/lib/api-error';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -23,7 +24,7 @@ export type MeResponse = {
 
 /**
  * Returns null when there's no Supabase session.
- * Throws when the api is reachable but returns an error.
+ * Throws an ApiClientError when the api is reachable but returns an error.
  */
 export async function fetchMe(): Promise<MeResponse | null> {
   const supabase = await createClient();
@@ -36,9 +37,7 @@ export async function fetchMe(): Promise<MeResponse | null> {
     headers: { Authorization: `Bearer ${session.access_token}` },
     cache: 'no-store',
   });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch /me: ${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as MeResponse;
 }
 
@@ -53,7 +52,7 @@ export type InvitationDetails = {
 
 /**
  * Public lookup — no auth required. Returns null on 404 (invalid token).
- * Throws on other api errors.
+ * Throws an ApiClientError on other api errors.
  */
 export async function fetchInvitation(
   token: string,
@@ -63,8 +62,6 @@ export async function fetchInvitation(
     { cache: 'no-store' },
   );
   if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`Failed to fetch invitation: ${res.status}`);
-  }
+  if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as InvitationDetails;
 }

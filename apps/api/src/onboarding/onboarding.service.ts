@@ -1,67 +1,49 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
-import { PrismaService } from '../prisma/prisma.service';
 import { ScrapeQueue } from '../queue/scrape.queue';
-import type { OnboardingDto } from './onboarding.dto';
-
-export type OnboardingResult = {
-  businessId: string;
-  locationIds: string[];
-};
+import type { OnboardingDto } from './dto/onboarding.dto';
+import type { OnboardingResultDto } from './dto/onboarding-result.response';
+import { OnboardingRepository } from './onboarding.repository';
 
 @Injectable()
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly repo: OnboardingRepository,
     private readonly scrapeQueue: ScrapeQueue,
   ) {}
 
-  async run(user: AuthUser, dto: OnboardingDto): Promise<OnboardingResult> {
-    const existingMembership = await this.prisma.locationUser.findFirst({
-      where: { authUserId: user.id },
-      select: { id: true },
-    });
-
+  async run(user: AuthUser, dto: OnboardingDto): Promise<OnboardingResultDto> {
+    const existingMembership = await this.repo.findAnyMembership(user.id);
     if (existingMembership) {
       throw new ConflictException('User has already completed onboarding');
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const business = await tx.business.create({
-        data: { name: dto.businessName },
-      });
+    const created = await this.repo.runInTransaction(async (tx) => {
+      const business = await this.repo.createBusinessInTx(tx, { name: dto.businessName });
 
       const locations = await Promise.all(
         dto.locations.map((loc) =>
-          tx.location.create({
-            data: {
-              businessId: business.id,
-              name: loc.name,
-              googlePlaceId: loc.googlePlaceId,
-              googleReviewUrl: loc.googleReviewUrl ?? null,
-              googleRating: loc.googleRating ?? null,
-              googleReviewsCount: loc.googleReviewsCount ?? null,
-              googleAddress: loc.googleAddress ?? null,
-            },
+          this.repo.createLocationInTx(tx, {
+            businessId: business.id,
+            name: loc.name,
+            googlePlaceId: loc.googlePlaceId,
+            googleReviewUrl: loc.googleReviewUrl ?? null,
+            googleRating: loc.googleRating ?? null,
+            googleReviewsCount: loc.googleReviewsCount ?? null,
+            googleAddress: loc.googleAddress ?? null,
           }),
         ),
       );
 
       await Promise.all(
         locations.map((loc) =>
-          tx.locationUser.create({
-            data: {
-              locationId: loc.id,
-              authUserId: user.id,
-              email: user.email,
-              role: 'admin',
-            },
+          this.repo.createMembershipInTx(tx, {
+            locationId: loc.id,
+            authUserId: user.id,
+            email: user.email,
+            role: 'admin',
           }),
         ),
       );
@@ -72,20 +54,19 @@ export class OnboardingService {
 
       return {
         businessId: business.id,
-        locationIds: locations.map((l) => l.id),
-        placeIds: locations.map((l) => l.googlePlaceId),
+        locations: locations.map((l) => ({ id: l.id, googlePlaceId: l.googlePlaceId })),
       };
     });
 
     await Promise.all(
-      result.locationIds
-        .filter((_, i) => result.placeIds[i])
-        .map((id) => this.scrapeQueue.enqueueBaseline(id)),
+      created.locations
+        .filter((l) => l.googlePlaceId)
+        .map((l) => this.scrapeQueue.enqueueBaseline(l.id)),
     );
 
     return {
-      businessId: result.businessId,
-      locationIds: result.locationIds,
+      businessId: created.businessId,
+      locationIds: created.locations.map((l) => l.id),
     };
   }
 }

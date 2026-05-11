@@ -3,18 +3,16 @@
 import { useState, type FormEvent } from 'react';
 import {
   Alert,
-  Box,
   Button,
   Dialog,
   DialogContent,
   IconButton,
   MenuItem,
-  Stack,
   TextField,
   Tooltip,
-  Typography,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import { apiPost } from '@/lib/api';
 
 type Props = {
@@ -24,12 +22,7 @@ type Props = {
 
 type Stage =
   | { kind: 'form' }
-  | {
-      kind: 'sent';
-      email: string;
-      shareUrl: string;
-      role: string;
-    };
+  | { kind: 'sent'; email: string; shareUrl: string; role: string };
 
 type CreateResponse = {
   id: string;
@@ -51,7 +44,6 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
   function handleClose() {
     if (submitting) return;
     setOpen(false);
-    // Reset on next open.
     setTimeout(() => {
       setStage({ kind: 'form' });
       setEmail('');
@@ -90,7 +82,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // Fallback: select-and-copy via execCommand could go here; rare in modern browsers.
+      // Clipboard API unavailable — rare in modern browsers.
     }
   }
 
@@ -99,33 +91,23 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
       <Button variant="text" size="small" onClick={() => setOpen(true)}>
         Invite teammate
       </Button>
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        fullWidth
-        maxWidth="sm"
-        slotProps={{
-          paper: {
-            sx: {
-              borderTop: '3px solid',
-              borderTopColor: 'primary.main',
-            },
-          },
-        }}
-      >
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
           {stage.kind === 'form' ? (
-            <Stack
-              component="form"
-              onSubmit={handleSubmit}
-              spacing={3}
-            >
-              <Stack spacing={0.5}>
-                <Typography variant="h5">Invite a teammate</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  They&apos;ll join <strong>{locationName}</strong> with the role you choose.
-                </Typography>
-              </Stack>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-1.5">
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+                  Team
+                </p>
+                <h2 className="text-xl font-semibold tracking-tight text-ink">
+                  Invite a teammate
+                </h2>
+                <p className="text-sm leading-relaxed text-muted">
+                  They&apos;ll join{' '}
+                  <span className="font-medium text-ink">{locationName}</span>{' '}
+                  with the role you choose.
+                </p>
+              </div>
               <TextField
                 label="Email"
                 type="email"
@@ -149,8 +131,12 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
                 <MenuItem value="admin">Admin</MenuItem>
               </TextField>
               {error && <Alert severity="error">{error}</Alert>}
-              <Stack direction="row" spacing={2} justifyContent="space-between">
-                <Button variant="text" onClick={handleClose} disabled={submitting}>
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  variant="text"
+                  onClick={handleClose}
+                  disabled={submitting}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -160,61 +146,52 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
                 >
                   {submitting ? 'Generating…' : 'Generate invite'}
                 </Button>
-              </Stack>
-            </Stack>
+              </div>
+            </form>
           ) : (
-            <Stack spacing={3}>
-              <Stack spacing={0.5}>
-                <Typography variant="h5">Share this link</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Send it to <strong>{stage.email}</strong>. They&apos;ll join as a{' '}
-                  {stage.role}.
-                </Typography>
-              </Stack>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  p: 1.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1.5,
-                  bgcolor: 'background.default',
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    flexGrow: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                  }}
-                >
+            <div className="space-y-6">
+              <div className="space-y-1.5">
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+                  Invite ready
+                </p>
+                <h2 className="text-xl font-semibold tracking-tight text-ink">
+                  Share this link
+                </h2>
+                <p className="text-sm leading-relaxed text-muted">
+                  Send it to{' '}
+                  <span className="font-medium text-ink">{stage.email}</span>.
+                  They&apos;ll join as{' '}
+                  <span className="font-medium text-ink">{stage.role}</span>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-bg py-1.5 pl-3 pr-1.5">
+                <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-muted">
                   {stage.shareUrl}
-                </Typography>
+                </span>
                 <Tooltip title={copied ? 'Copied' : 'Copy link'}>
                   <IconButton
                     size="small"
                     onClick={() => handleCopy(stage.shareUrl)}
                     color={copied ? 'primary' : 'default'}
                   >
-                    <ContentCopyIcon fontSize="small" />
+                    {copied ? (
+                      <CheckRoundedIcon fontSize="small" />
+                    ) : (
+                      <ContentCopyIcon fontSize="small" />
+                    )}
                   </IconButton>
                 </Tooltip>
-              </Box>
-              <Typography variant="caption" color="text.secondary">
-                The link expires in 7 days. Email delivery comes in a future update — share manually for now.
-              </Typography>
-              <Stack direction="row" justifyContent="flex-end">
+              </div>
+              <p className="text-xs leading-relaxed text-faint">
+                The link expires in 7 days. Email delivery comes in a future
+                update — share it manually for now.
+              </p>
+              <div className="flex justify-end">
                 <Button variant="contained" onClick={handleClose}>
                   Done
                 </Button>
-              </Stack>
-            </Stack>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

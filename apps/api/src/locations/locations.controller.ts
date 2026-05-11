@@ -2,7 +2,8 @@ import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.type';
-import { CreateLocationDto } from './locations.dto';
+import { CreateLocationDto } from './dto/create-location.dto';
+import type { LocationResponseDto } from './dto/location.response';
 import { LocationsService } from './locations.service';
 
 @Controller('locations')
@@ -12,7 +13,10 @@ export class LocationsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@CurrentUser() user: AuthUser, @Body() dto: CreateLocationDto) {
+  create(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateLocationDto,
+  ): Promise<LocationResponseDto> {
     return this.service.createForCurrentBusiness(user, dto);
   }
 }

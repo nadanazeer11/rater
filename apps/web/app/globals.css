@@ -1,1 +1,49 @@
 @import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Iris — single indigo-violet accent over cool zinc neutrals.
+     Keep these in sync with apps/web/lib/theme.ts */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #eef2ff;
+
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: #e4e4e7;
+  --color-ink: #18181b;
+  --color-muted: #52525b;
+  --color-faint: #a1a1aa;
+
+  --color-star: #f59e0b;
+  --color-danger: #e11d48;
+  --color-positive: #059669;
+
+  --radius-card: 0.75rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tactile press feedback — physical "push" on :active */
+@utility tactile {
+  transition: transform 150ms var(--ease-out);
+  &:active {
+    transform: translateY(1px) scale(0.99);
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 22%, transparent);
+  }
+}

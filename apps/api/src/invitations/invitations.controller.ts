@@ -11,7 +11,10 @@ import {
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.type';
-import { CreateInvitationDto } from './invitations.dto';
+import { CreateInvitationDto } from './dto/create-invitation.dto';
+import type { InvitationAcceptedDto } from './dto/invitation-accepted.response';
+import type { InvitationCreatedDto } from './dto/invitation-created.response';
+import type { InvitationDetailsDto } from './dto/invitation-details.response';
 import { InvitationsService } from './invitations.service';
 
 @Controller('invitations')
@@ -21,22 +24,25 @@ export class InvitationsController {
   @Post()
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.CREATED)
-  async create(
+  create(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateInvitationDto,
-  ) {
+  ): Promise<InvitationCreatedDto> {
     return this.service.create(user, dto);
   }
 
   @Get('by-token/:token')
-  async getByToken(@Param('token') token: string) {
+  getByToken(@Param('token') token: string): Promise<InvitationDetailsDto> {
     return this.service.getByToken(token);
   }
 
   @Post('by-token/:token/accept')
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
-  async accept(@CurrentUser() user: AuthUser, @Param('token') token: string) {
+  accept(
+    @CurrentUser() user: AuthUser,
+    @Param('token') token: string,
+  ): Promise<InvitationAcceptedDto> {
     return this.service.accept(user, token);
   }
 }
