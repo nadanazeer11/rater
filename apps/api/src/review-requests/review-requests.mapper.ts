@@ -10,6 +10,8 @@ export function toRequestSummary(r: RequestWithCustomer, rateUrl: string): Reque
     ratingStatus: r.ratingStatus,
     googleAttributionStatus: r.googleAttributionStatus,
     redirectedToGoogle: r.redirectedToGoogleAt !== null,
+    rating: r.ratingSubmission?.rating ?? null,
+    feedback: r.feedbackSubmission?.text ?? null,
     createdAt: r.createdAt,
     rateUrl,
   };

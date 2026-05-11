@@ -82,6 +82,8 @@ export type RequestSummary = {
   ratingStatus: string;
   googleAttributionStatus: string;
   redirectedToGoogle: boolean;
+  rating: number | null;
+  feedback: string | null;
   createdAt: string;
   rateUrl: string;
 };

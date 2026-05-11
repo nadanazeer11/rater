@@ -20,6 +20,10 @@ export class RequestSummaryDto {
   ratingStatus!: string;
   googleAttributionStatus!: string;
   redirectedToGoogle!: boolean;
+  /** The 1–5 stars they gave, or null if not rated yet. */
+  rating!: number | null;
+  /** Their private feedback text (low ratings only), or null. */
+  feedback!: string | null;
   createdAt!: Date;
   rateUrl!: string;
 }

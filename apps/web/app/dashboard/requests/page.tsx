@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { fetchMe, fetchReviewRequests, type RequestSummary } from '@/lib/server-api';
 import { EmptyState } from '@/components/empty-state';
+import { Stars } from '@/components/star-rating';
 import { Sidebar } from '../sidebar';
 import { DashboardHeader } from '../dashboard-header';
 import { RequestReviewButton } from './request-review-button';
@@ -19,34 +21,30 @@ const EMERALD = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
 const AMBER = 'bg-amber-50 text-amber-700 border border-amber-200';
 const NEUTRAL = 'border border-border text-faint';
 
-function RatingPill({
-  status,
-  redirectedToGoogle,
-}: {
-  status: string;
-  redirectedToGoogle: boolean;
-}) {
-  let label: string;
-  let cls: string;
-  if (status === 'rated_positive') {
-    label = redirectedToGoogle ? 'rated · went to Google' : 'rated · sent to Google';
-    cls = redirectedToGoogle ? EMERALD : NEUTRAL;
-  } else if (status === 'rated_negative') {
-    label = 'rated · feedback';
-    cls = AMBER;
-  } else if (status === 'feedback_submitted') {
-    label = 'feedback received';
-    cls = AMBER;
-  } else if (status === 'not_rated') {
-    label = 'awaiting rating';
-    cls = NEUTRAL;
-  } else {
-    label = status;
-    cls = NEUTRAL;
-  }
+function Tag({ cls, children }: { cls: string; children: ReactNode }) {
   return (
     <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
-      {label}
+      {children}
+    </span>
+  );
+}
+
+function RatingCell({ r }: { r: RequestSummary }) {
+  if (r.rating == null) {
+    return <span className="text-xs text-faint">awaiting rating</span>;
+  }
+  const wentNegative =
+    r.ratingStatus === 'rated_negative' || r.ratingStatus === 'feedback_submitted';
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Stars value={r.rating} className="h-4 w-4" />
+      {wentNegative ? (
+        <Tag cls={AMBER}>feedback</Tag>
+      ) : (
+        <Tag cls={r.redirectedToGoogle ? EMERALD : NEUTRAL}>
+          {r.redirectedToGoogle ? 'went to Google' : 'sent to Google'}
+        </Tag>
+      )}
     </span>
   );
 }
@@ -119,9 +117,17 @@ export default async function RequestsPage({
                       {r.customer.name && (
                         <p className="truncate font-mono text-sm text-muted">{r.customer.email}</p>
                       )}
+                      {r.feedback && (
+                        <p
+                          title={r.feedback}
+                          className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-muted"
+                        >
+                          “{r.feedback}”
+                        </p>
+                      )}
                     </div>
-                    <div className="sm:w-52 sm:shrink-0">
-                      <RatingPill status={r.ratingStatus} redirectedToGoogle={r.redirectedToGoogle} />
+                    <div className="sm:w-56 sm:shrink-0">
+                      <RatingCell r={r} />
                     </div>
                     <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
                       {dateFmt.format(new Date(r.createdAt))}

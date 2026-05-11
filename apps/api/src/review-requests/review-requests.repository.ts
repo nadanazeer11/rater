@@ -3,7 +3,11 @@ import { Prisma } from '@rater/db';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type RequestWithCustomer = Prisma.ReviewRequestGetPayload<{
-  include: { customer: { select: { name: true; email: true } } };
+  include: {
+    customer: { select: { name: true; email: true } };
+    ratingSubmission: { select: { rating: true } };
+    feedbackSubmission: { select: { text: true } };
+  };
 }>;
 
 export type RequestByToken = Prisma.ReviewRequestGetPayload<{
@@ -119,7 +123,11 @@ export class ReviewRequestsRepository {
     return this.prisma.reviewRequest.findMany({
       where: { locationId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
-      include: { customer: { select: { name: true, email: true } } },
+      include: {
+        customer: { select: { name: true, email: true } },
+        ratingSubmission: { select: { rating: true } },
+        feedbackSubmission: { select: { text: true } },
+      },
     });
   }
 
