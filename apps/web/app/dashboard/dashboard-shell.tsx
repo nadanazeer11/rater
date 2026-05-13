@@ -1,29 +1,19 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { MeResponse } from '@rater/types';
-import { useSelectedLocation } from '@/hooks/use-selected-location';
+import { useDashboard } from './dashboard-context';
 import { Sidebar } from './sidebar';
 import { DashboardHeader } from './dashboard-header';
 import { OnboardingDialog } from './onboarding-dialog';
 
-export function DashboardShell({
-  me,
-  children,
-}: {
-  me: MeResponse;
-  children: ReactNode;
-}) {
-  const { location } = useSelectedLocation(me.locations);
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const { me } = useDashboard();
 
   return (
     <div className="flex min-h-dvh bg-bg">
-      <Sidebar locations={me.locations} />
+      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardHeader
-          email={me.email}
-          businessName={location?.business.name ?? null}
-        />
+        <DashboardHeader />
         {children}
       </div>
       <OnboardingDialog initiallyOpen={!me.onboarded} />

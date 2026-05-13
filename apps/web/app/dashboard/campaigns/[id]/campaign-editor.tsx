@@ -20,6 +20,8 @@ import type {
 } from '@rater/types';
 import { useUpdateCampaign } from '@/hooks/use-update-campaign';
 import { useArchiveCampaign } from '@/hooks/use-archive-campaign';
+import { useCampaigns } from '@/hooks/use-campaigns';
+import { useDashboard } from '../../dashboard-context';
 
 type Toast = { severity: 'success' | 'error'; message: string };
 
@@ -103,20 +105,14 @@ function stripToInput(steps: CampaignDetail['steps']): EditorStep[] {
   }));
 }
 
-type Props = {
-  campaign: CampaignDetail;
-  locationName: string;
-  businessName: string;
-  canArchive: boolean;
-};
-
-export function CampaignEditor({
-  campaign,
-  locationName,
-  businessName,
-  canArchive,
-}: Props) {
+export function CampaignEditor({ campaign }: { campaign: CampaignDetail }) {
   const router = useRouter();
+  const { me } = useDashboard();
+  const location = me.locations.find((l) => l.id === campaign.locationId);
+  const locationName = location?.name ?? '';
+  const businessName = location?.business.name ?? '';
+  const { data: campaigns = [] } = useCampaigns(campaign.locationId);
+  const canArchive = campaigns.length > 1;
   const [name, setName] = useState(campaign.name);
   const [steps, setSteps] = useState<EditorStep[]>(stripToInput(campaign.steps));
   const [snapshot, setSnapshot] = useState(() =>

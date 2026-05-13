@@ -5,14 +5,12 @@ import { Divider, IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import { useSignOut } from '@/hooks/use-sign-out';
+import { useDashboard } from './dashboard-context';
 
-export function DashboardHeader({
-  email,
-  businessName,
-}: {
-  email: string;
-  businessName: string | null;
-}) {
+export function DashboardHeader() {
+  const { me, location } = useDashboard();
+  const email = me.email;
+  const businessName = location?.business.name ?? null;
   const signOut = useSignOut();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
@@ -12,9 +10,9 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import type { SvgIconComponent } from '@mui/icons-material';
-import type { LocationSummary } from '@rater/types';
-import { useSelectedLocation } from '@/hooks/use-selected-location';
+import { useDashboard } from './dashboard-context';
 import { AddLocationDialog } from './add-location-dialog';
+import { NavLink } from './nav-link';
 
 type NavItem = {
   label: string;
@@ -42,10 +40,8 @@ const DOT_COLORS = [
 
 const FIVE_MINUTES = 5 * 60_000;
 
-export function Sidebar({ locations }: { locations: LocationSummary[] }) {
-  const pathname = usePathname();
-  const { location, canAddLocation, selectLocation } =
-    useSelectedLocation(locations);
+export function Sidebar() {
+  const { location, locations, canAddLocation, selectLocation } = useDashboard();
   const [addOpen, setAddOpen] = useState(false);
 
   const currentLocationId = location?.id ?? null;
@@ -77,21 +73,14 @@ export function Sidebar({ locations }: { locations: LocationSummary[] }) {
               </div>
             );
           }
-          const active =
-            path === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(path);
           return (
-            <Link
+            <NavLink
               key={label}
-              href={`${path}${locationQuery}`}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                active
-                  ? 'bg-accent-soft font-semibold text-accent'
-                  : 'font-medium text-muted hover:bg-zinc-50 hover:text-ink'
-              }`}
-            >
-              <Icon fontSize="small" />
-              {label}
-            </Link>
+              path={path}
+              label={label}
+              icon={Icon}
+              query={locationQuery}
+            />
           );
         })}
       </nav>

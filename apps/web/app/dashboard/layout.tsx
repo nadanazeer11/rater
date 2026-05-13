@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { fetchMe } from '@/lib/server-api';
+import { createClient } from '@/lib/supabase/server';
+import { DashboardProvider } from './dashboard-context';
 import { DashboardShell } from './dashboard-shell';
 
 export default async function DashboardLayout({
@@ -8,7 +9,17 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const me = await fetchMe();
-  if (!me) redirect('/sign-in');
-  return <DashboardShell me={me}>{children}</DashboardShell>;
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) redirect('/sign-in');
+
+  return (
+    <Suspense fallback={null}>
+      <DashboardProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </DashboardProvider>
+    </Suspense>
+  );
 }

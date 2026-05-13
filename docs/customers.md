@@ -1,7 +1,7 @@
 # Customers
 
 > **Scope:** the `Customer` model, the `CustomersRepository` (the engine other modules call to upsert/look up customers), and the read-only `/dashboard/customers` list page. **Customers are created as a side effect of review requests, not here** — see [docs/review-requests.md](review-requests.md) for the create path. For the API layering see [docs/architecture.md](architecture.md).
-> **Last updated:** 2026-05-11 (PR — `feat/review-requests`)
+> **Last updated:** 2026-05-13 (PR — `perf/dashboard-nav-transition`)
 
 ## What it is
 
@@ -15,7 +15,7 @@ The people a location has requested reviews from. A `Customer` row appears the f
 - `GET /customers?locationId=` — list non-deleted customers, newest first. That's the only endpoint. Authz: `CustomersService.assertMember` requires the caller to be a `LocationUser` of that location (any role) and rejects an empty `locationId` (a missing `locationId` in a Prisma `where` is "not filtered" → would leak other locations' customers, so the guard is load-bearing).
 - **`CustomersRepository`** is exported from `CustomersModule` and injected by `ReviewRequestsService`: `findActiveByEmail(locationId, email)` (does this email already exist? — used for the single-request upsert), `findManyByEmails(locationId, emails[])` (batch existence check for the bulk import), `create(data)` (insert a customer), `findMembership(authUserId, locationId)` (the authz lookup), `listActiveByLocation(locationId)` (the list). Email is normalized (trim+lowercase) by the *caller* (`ReviewRequestsService`) before it reaches the repo, so stored emails are lowercase and the `@@unique` constraint dedups reliably.
 
-**Web** — `apps/web/app/dashboard/customers/page.tsx` (server): `fetchMe()` (Next dedupes the fetch within a request) → redirects to `/sign-in` if no session, `/dashboard` if not onboarded / no locations; resolves the selected location from `?location=`; `fetchCustomers(selected.id)`; renders the shared shell (`<Sidebar>` + `<DashboardHeader>`) + a `divide-y` row list with an `emailStatus` pill, or an `<EmptyState>` ("Customers show up here once you've requested a review from them" → links to `/dashboard/requests`). `apps/web/lib/server-api.ts` → `CustomerSummary` + `fetchCustomers`.
+**Web** — `apps/web/app/dashboard/customers/page.tsx` is a one-liner server stub: `<CustomersList />`. The list itself (`customers-list.tsx`, client) reads the selected location from `useDashboard()` (the dashboard context — see [architecture.md](architecture.md)) and the customer data via `useCustomers(locationId)` (TanStack Query, queryKey `['customers', locationId]`, inherits the 5-min default `staleTime`, guarded by `enabled: !!locationId`). First paint shows an inline skeleton, revisits within `staleTime` hit the cache (zero network, instant tab swap). Renders the same `divide-y` rows with `emailStatus` pill, or an `<EmptyState>` ("Customers show up here once you've requested a review from them" → links to `/dashboard/requests`). The `apiGet` client lives in `apps/web/lib/api.ts`; the wire type `CustomerSummary` is shared via `@rater/types`.
 
 ## Conventions / gotchas
 
