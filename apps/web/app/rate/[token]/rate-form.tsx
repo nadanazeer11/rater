@@ -73,7 +73,7 @@ export function RateForm({
 
   if (phase === 'feedback') {
     return (
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Sorry to hear that</h1>
           <p className="text-sm leading-relaxed text-muted">
@@ -108,7 +108,7 @@ export function RateForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           How was your visit to {locationName}?

@@ -26,7 +26,7 @@ export function AddLocationDialog({ open, onClose }: Props) {
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
             New location
           </p>

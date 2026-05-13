@@ -30,6 +30,13 @@ export class CreateReviewRequestDto {
   @MaxLength(64)
   locationId!: string;
 
+  /** Which campaign runs this request. Omitted → the location's default
+   *  (newest active) campaign. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  campaignId?: string;
+
   @ValidateNested()
   @Type(() => ReviewRequestCustomerDto)
   customer!: ReviewRequestCustomerDto;

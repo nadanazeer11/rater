@@ -7,6 +7,7 @@ import type { ReviewRequestCreated } from '@rater/types';
 
 type Input = {
   locationId: string;
+  campaignId?: string;
   customer: { name: string; email: string; phone?: string };
 };
 

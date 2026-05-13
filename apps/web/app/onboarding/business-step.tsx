@@ -30,7 +30,7 @@ export function BusinessStep({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="space-y-1.5">
         <h2 className="text-xl font-semibold tracking-tight text-ink">
           Set up your business
@@ -49,7 +49,7 @@ export function BusinessStep({
         required
       />
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <label
           htmlFor="location-count"
           className="block text-sm font-medium text-ink"

@@ -69,7 +69,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
           {stage.kind === 'form' ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               <div className="space-y-1.5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
                   Team
@@ -124,7 +124,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
               </div>
             </form>
           ) : (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6">
               <div className="space-y-1.5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
                   Invite ready

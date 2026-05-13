@@ -1,7 +1,7 @@
 # Architecture & conventions
 
 > **Scope:** the cross-cutting stuff most feature docs assume — repo layout, the API clean-architecture pattern, BullMQ wiring, Prisma/DB conventions, Supabase auth, dev quirks. `CLAUDE.md` has the condensed version (Stack / Conventions / Dev environment quirks sections); this is the detail. For the UI side (Iris palette, Geist, MUI+Tailwind split) see `CLAUDE.md` → Brand and (eventually) `docs/design-system.md`.
-> **Last updated:** 2026-05-11 (PR #17 — `feat/customers`)
+> **Last updated:** 2026-05-11 (PR — `feat/campaigns`)
 
 ## Monorepo
 
@@ -9,7 +9,7 @@ Turborepo + pnpm. `apps/web` (Next 15, App Router), `apps/api` (NestJS 11 HTTP),
 
 ## API — clean-architecture module pattern
 
-Every feature module under `apps/api/src/<name>/` has the same layers; copy an existing one (`locations/`, `invitations/`, `customers/`) when adding a feature:
+Every feature module under `apps/api/src/<name>/` has the same layers; copy an existing one (`locations/`, `invitations/`, `customers/`, `campaigns/`) when adding a feature:
 
 - **`<name>.module.ts`** — `@Module({ controllers: [...], providers: [Service, Repository] })`. Register it in `apps/api/src/app.module.ts`.
 - **`<name>.controller.ts`** — `@Controller('<route>')`, thin: pulls `@CurrentUser()` + `@Body()`/`@Query()`/`@Param()` and delegates to the service. Authed routes: `@UseGuards(AuthGuard)` (on the class or the method). Set explicit `@HttpCode(...)` where it isn't 200/201.

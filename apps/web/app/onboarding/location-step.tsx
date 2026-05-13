@@ -94,7 +94,7 @@ export function LocationStep({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
         <h2 className="text-xl font-semibold tracking-tight text-ink">
           {total > 1

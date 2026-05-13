@@ -3,8 +3,9 @@
 import { useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { Alert, Button, Dialog, DialogContent } from '@mui/material';
-import type { ImportRequestsResult } from '@rater/types';
+import type { CampaignSummary, ImportRequestsResult } from '@rater/types';
 import { useImportReviewRequests } from '@/hooks/use-import-review-requests';
+import { CampaignSelect, defaultCampaignId } from './campaign-select';
 
 const MAX_ROWS = 5000;
 
@@ -22,11 +23,18 @@ function summarize(r: ImportRequestsResult): string {
   return parts.join(' · ');
 }
 
-export function RequestReviewsCsvButton({ locationId }: { locationId: string }) {
+export function RequestReviewsCsvButton({
+  locationId,
+  campaigns,
+}: {
+  locationId: string;
+  campaigns: CampaignSummary[];
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'pick' });
   const [parseError, setParseError] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState(() => defaultCampaignId(campaigns));
   const importRequests = useImportReviewRequests();
   const submitting = importRequests.isPending;
   const error = parseError ?? importRequests.error?.message ?? null;
@@ -34,6 +42,7 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
   function reset() {
     setStage({ kind: 'pick' });
     setParseError(null);
+    setCampaignId(defaultCampaignId(campaigns));
     importRequests.reset();
     if (inputRef.current) inputRef.current.value = '';
   }
@@ -81,7 +90,7 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
 
   function handleImport(rows: Row[]) {
     importRequests.mutate(
-      { locationId, rows },
+      { locationId, campaignId: campaignId || undefined, rows },
       { onSuccess: (result) => setStage({ kind: 'done', result }) },
     );
   }
@@ -93,7 +102,7 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
       </Button>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             <div className="space-y-1.5">
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
                 Bulk review requests
@@ -131,7 +140,7 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
             )}
 
             {stage.kind === 'preview' && (
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 <p className="text-sm text-muted">
                   <span className="font-mono text-ink">{stage.fileName}</span> —{' '}
                   <span className="font-medium text-ink">{stage.rows.length.toLocaleString()}</span>{' '}
@@ -162,6 +171,12 @@ export function RequestReviewsCsvButton({ locationId }: { locationId: string }) 
                     …and {(stage.rows.length - 5).toLocaleString()} more.
                   </p>
                 )}
+                <CampaignSelect
+                  campaigns={campaigns}
+                  value={campaignId}
+                  onChange={setCampaignId}
+                  disabled={submitting}
+                />
               </div>
             )}
 

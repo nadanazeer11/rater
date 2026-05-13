@@ -61,6 +61,45 @@ export interface ReviewRequestCreated {
   rateUrl: string;
 }
 
+export type CampaignStepType =
+  | 'initial'
+  | 'follow_up_no_rating'
+  | 'follow_up_no_google_review';
+export type CampaignDelayAnchor =
+  | 'request_created'
+  | 'rating_submitted'
+  | 'previous_step';
+
+export interface CampaignStepDetail {
+  id: string;
+  stepOrder: number;
+  stepType: CampaignStepType;
+  delayDays: number;
+  delayAnchor: CampaignDelayAnchor;
+  requiredState: Record<string, string>;
+  subjectTemplate: string;
+  bodyTemplate: string;
+}
+
+/** A step as the editor submits it — order is the array index, id is server-assigned. */
+export type CampaignStepInput = Omit<CampaignStepDetail, 'id' | 'stepOrder'>;
+
+export interface CampaignSummary {
+  id: string;
+  name: string;
+  /** True for the location's newest active campaign — the one new requests default to. */
+  isDefault: boolean;
+  stepCount: number;
+  requestCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignDetail extends CampaignSummary {
+  locationId: string;
+  steps: CampaignStepDetail[];
+}
+
 export interface ImportRequestsResult {
   received: number;
   created: number;

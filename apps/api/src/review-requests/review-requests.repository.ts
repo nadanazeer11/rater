@@ -46,36 +46,6 @@ export class ReviewRequestsRepository {
     });
   }
 
-  findDefaultCampaign(locationId: string) {
-    return this.prisma.campaign.findFirst({
-      where: { locationId, isActive: true },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-  }
-
-  createDefaultCampaign(locationId: string) {
-    return this.prisma.campaign.create({
-      data: {
-        locationId,
-        name: 'Review requests',
-        steps: {
-          create: {
-            stepOrder: 1,
-            stepType: 'initial',
-            delayDays: 0,
-            delayAnchor: 'request_created',
-            requiredState: {},
-            subjectTemplate: 'How was your visit to {{location}}?',
-            bodyTemplate:
-              'Hi {{name}},\n\nThanks for choosing {{location}}. Could you take 10 seconds to rate your visit?\n\n{{rate_link}}\n\n— The {{business}} team',
-          },
-        },
-      },
-      select: { id: true },
-    });
-  }
-
   findRecentRequestForCustomer(customerId: string, since: Date) {
     return this.prisma.reviewRequest.findFirst({
       where: { customerId, deletedAt: null, createdAt: { gte: since } },

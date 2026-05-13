@@ -33,6 +33,13 @@ export class ImportReviewRequestsDto {
   @MaxLength(64)
   locationId!: string;
 
+  /** Which campaign runs these requests. Omitted → the location's default
+   *  (newest active) campaign. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  campaignId?: string;
+
   @IsArray()
   @ArrayMaxSize(5000)
   @ValidateNested({ each: true })

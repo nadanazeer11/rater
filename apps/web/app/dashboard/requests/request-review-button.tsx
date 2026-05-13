@@ -12,17 +12,26 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import type { CampaignSummary } from '@rater/types';
 import { useCreateReviewRequest } from '@/hooks/use-create-review-request';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { CampaignSelect, defaultCampaignId } from './campaign-select';
 
 type Stage = { kind: 'form' } | { kind: 'done'; rateUrl: string; email: string };
 
-export function RequestReviewButton({ locationId }: { locationId: string }) {
+export function RequestReviewButton({
+  locationId,
+  campaigns,
+}: {
+  locationId: string;
+  campaigns: CampaignSummary[];
+}) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'form' });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [campaignId, setCampaignId] = useState(() => defaultCampaignId(campaigns));
   const createRequest = useCreateReviewRequest();
   const { copied, copy } = useClipboard();
   const submitting = createRequest.isPending;
@@ -35,6 +44,7 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
       setName('');
       setEmail('');
       setPhone('');
+      setCampaignId(defaultCampaignId(campaigns));
       createRequest.reset();
     }, 200);
   }
@@ -45,6 +55,7 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
     createRequest.mutate(
       {
         locationId,
+        campaignId: campaignId || undefined,
         customer: {
           name: name.trim(),
           email: trimmedEmail,
@@ -66,7 +77,7 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogContent sx={{ p: { xs: 3, sm: 5 } }}>
           {stage.kind === 'form' ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               <div className="space-y-1.5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
                   Review request
@@ -80,6 +91,12 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
                 </p>
               </div>
               <div className="flex flex-col gap-4">
+                <CampaignSelect
+                  campaigns={campaigns}
+                  value={campaignId}
+                  onChange={setCampaignId}
+                  disabled={submitting}
+                />
                 <TextField
                   label="Name"
                   required
@@ -128,7 +145,7 @@ export function RequestReviewButton({ locationId }: { locationId: string }) {
               </div>
             </form>
           ) : (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6">
               <div className="space-y-1.5">
                 <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
                   Link ready

@@ -38,7 +38,7 @@ export function InviteAcceptCard({
           ? 'This invitation has expired'
           : 'This invitation has been revoked';
     return (
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             {title}
@@ -77,7 +77,7 @@ export function InviteAcceptCard({
   // Branch 1: not signed in → send magic link directly using the invitation's email.
   if (!currentUserEmail) {
     return (
-      <div className="space-y-7">
+      <div className="flex flex-col gap-7">
         {headline}
         <SendSignInLink token={token} email={invitation.email} />
       </div>
@@ -92,9 +92,9 @@ export function InviteAcceptCard({
       router.refresh();
     }
     return (
-      <div className="space-y-7">
+      <div className="flex flex-col gap-7">
         {headline}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <Alert severity="warning">
             You&apos;re signed in as <strong>{currentUserEmail}</strong>, but
             this invitation was sent to <strong>{invitation.email}</strong>.
@@ -109,7 +109,7 @@ export function InviteAcceptCard({
 
   // Branch 3: signed in with the right email → auto-accept.
   return (
-    <div className="space-y-7">
+    <div className="flex flex-col gap-7">
       {headline}
       <AutoAccept token={token} />
     </div>
@@ -150,7 +150,7 @@ function SendSignInLink({ token, email }: { token: string; email: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <Button
         onClick={handleClick}
         variant="contained"
@@ -175,7 +175,7 @@ function AutoAccept({ token }: { token: string }) {
 
   if (acceptInvitation.error) {
     return (
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <Alert severity="error">{acceptInvitation.error.message}</Alert>
         <Button
           onClick={() => mutate(token)}

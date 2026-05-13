@@ -52,7 +52,7 @@ export function OnboardingWizard({ onComplete }: Props) {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="flex flex-col gap-7">
       <div className="space-y-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
           {step === 0 ? 'Welcome to Rater' : `Step ${step + 1} of ${totalSteps}`}

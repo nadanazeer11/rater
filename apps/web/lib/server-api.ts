@@ -2,6 +2,8 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { ApiClientError, toApiClientError } from '@/lib/api-error';
 import type {
+  CampaignDetail,
+  CampaignSummary,
   CustomerSummary,
   InvitationDetails,
   MeResponse,
@@ -77,6 +79,27 @@ export async function fetchReviewRequests(
   if (!res) return [];
   if (!res.ok) throw await toApiClientError(res);
   return (await res.json()) as RequestSummary[];
+}
+
+/** Campaigns for a location (the api seeds a default one if there are none). */
+export async function fetchCampaigns(
+  locationId: string,
+): Promise<CampaignSummary[]> {
+  const res = await authedFetch(
+    `/campaigns?locationId=${encodeURIComponent(locationId)}`,
+  );
+  if (!res) return [];
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as CampaignSummary[];
+}
+
+/** A single campaign with its steps. Returns null on 404. */
+export async function fetchCampaign(id: string): Promise<CampaignDetail | null> {
+  const res = await authedFetch(`/campaigns/${encodeURIComponent(id)}`);
+  if (!res) return null;
+  if (res.status === 404) return null;
+  if (!res.ok) throw await toApiClientError(res);
+  return (await res.json()) as CampaignDetail;
 }
 
 /**

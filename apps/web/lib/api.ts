@@ -28,7 +28,7 @@ function networkError(path: string, timedOut: boolean): ApiClientError {
   });
 }
 
-async function request<T>(path: string, init: RequestInit): Promise<T> {
+async function requestRaw(path: string, init: RequestInit): Promise<Response> {
   const headers = await authHeaders();
   let res: Response;
   try {
@@ -41,19 +41,35 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     throw networkError(path, e instanceof DOMException && e.name === 'TimeoutError');
   }
   if (!res.ok) throw await toApiClientError(res);
+  return res;
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const res = await requestRaw(path, init);
   return res.json() as Promise<T>;
 }
 
+const jsonInit = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
 export function apiPost<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return request<T>(path, jsonInit('POST', body));
+}
+
+export function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, jsonInit('PATCH', body));
 }
 
 export function apiGet<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'GET' });
+}
+
+/** For 204-No-Content endpoints — no body to parse. */
+export async function apiDelete(path: string): Promise<void> {
+  await requestRaw(path, { method: 'DELETE' });
 }
 
 /** Fire-and-forget ping that the customer clicked through to Google. Uses

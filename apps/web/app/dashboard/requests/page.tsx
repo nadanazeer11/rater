@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { fetchMe, fetchReviewRequests } from '@/lib/server-api';
-import type { RequestSummary } from '@rater/types';
+import { fetchCampaigns, fetchMe, fetchReviewRequests } from '@/lib/server-api';
+import type { CampaignSummary, RequestSummary } from '@rater/types';
 import { EmptyState } from '@/components/empty-state';
 import { Stars } from '@/components/star-rating';
 import { RequestReviewButton } from './request-review-button';
@@ -62,7 +62,11 @@ export default async function RequestsPage({
     me.locations.find((l) => l.id === locationParam) ?? me.locations[0];
   if (!selected) redirect('/dashboard');
 
-  const requests: RequestSummary[] = await fetchReviewRequests(selected.id);
+  const [requests, campaigns]: [RequestSummary[], CampaignSummary[]] =
+    await Promise.all([
+      fetchReviewRequests(selected.id),
+      fetchCampaigns(selected.id),
+    ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
@@ -74,8 +78,8 @@ export default async function RequestsPage({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <RequestReviewsCsvButton locationId={selected.id} />
-          <RequestReviewButton locationId={selected.id} />
+          <RequestReviewsCsvButton locationId={selected.id} campaigns={campaigns} />
+          <RequestReviewButton locationId={selected.id} campaigns={campaigns} />
         </div>
       </div>
 
@@ -86,8 +90,8 @@ export default async function RequestsPage({
             description="Request a review from a customer and we'll generate a rating link to send them. A customer record is created automatically."
             action={
               <div className="flex items-center gap-2">
-                <RequestReviewsCsvButton locationId={selected.id} />
-                <RequestReviewButton locationId={selected.id} />
+                <RequestReviewsCsvButton locationId={selected.id} campaigns={campaigns} />
+                <RequestReviewButton locationId={selected.id} campaigns={campaigns} />
               </div>
             }
           />

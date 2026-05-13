@@ -16,6 +16,7 @@ Index:
 - [docs/architecture.md](docs/architecture.md) — repo layout, the API clean-architecture module pattern, BullMQ wiring, Prisma/DB conventions, Supabase auth, dev quirks. *Read this once; most feature docs assume it.*
 - [docs/review-requests.md](docs/review-requests.md) — the `ReviewRequest` lifecycle: single + bulk "Request a review" (the `Customer` is upserted in the background), the lazily-created default campaign, the public `/rate/[token]` page, routing a rating to Google vs a private feedback form, the cooldown.
 - [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `CustomersRepository` (consumed by review-requests to upsert/look up customers), the read-only `/dashboard/customers` list. Customers are created via review requests, not directly.
+- [docs/campaigns.md](docs/campaigns.md) — Campaigns: the `Campaign`/`CampaignStep` model, the `/dashboard/campaigns` editor (name + email steps + follow-up triggers, live `{{token}}` preview), "newest active = default", the campaign picker on review requests. Nothing sends/schedules yet — editor only.
 
 ## Stack
 
@@ -38,7 +39,7 @@ Index:
 - **Typography:** **Geist** Sans (everything) + Geist Mono (numerals, IDs, share-links) via the `geist` npm package, wired in `apps/web/app/layout.tsx` as `--font-geist-sans` / `--font-geist-mono`. **No Inter.**
 - **Surfaces:** crisp & flat — 1px hairline borders, near-zero tinted shadow, 12px card / 16px dialog radius. Dashboard lists use one bordered surface with `divide-y` rows, not stacked boxed cards.
 - **Two sources of truth, kept in sync:** `apps/web/lib/theme.ts` (MUI theme + component overrides) and the `@theme` block in `apps/web/app/globals.css` (Tailwind v4 tokens → `bg-accent`, `text-ink`, `border-border`, `rounded-card`, `font-mono`, `.tactile`, etc.). Change both.
-- **Styling split:** MUI for forms / inputs / dialogs / menus / autocomplete (styled via the theme + `sx`); Tailwind utilities for page shells, layouts, and plain HTML elements. Don't put Tailwind utility classes on MUI components — `enableCssLayer` puts MUI in a later cascade layer so it'd win anyway.
+- **Styling split:** MUI for forms / inputs / dialogs / menus / autocomplete (styled via the theme + `sx`); Tailwind utilities for page shells, layouts, and plain HTML elements. Don't put Tailwind utility classes on MUI components — `enableCssLayer` puts MUI in a later cascade layer so it'd win anyway. **Same trap on parents:** to space MUI siblings (TextField, Alert, Button…) use `flex flex-col gap-N` — `space-y-N` adds `margin-top` to children and MUI's cascade-layer reset wipes it, so the inputs end up flush.
 - **Reusable bits:** `apps/web/components/` — `logo`, `star-rating` (`StarRating`/`Stars`), `brand-panel` + `auth-shell` (split-screen for sign-in / auth-error / invite), `empty-state`. The dashboard's own chrome lives in `apps/web/app/dashboard/`: `sidebar.tsx` (nav + locations switcher + add-location), `dashboard-header.tsx` (in-main top bar + account menu, owns sign-out), `location-detail.tsx`, `add-location-dialog.tsx` (controlled; `add-location-button.tsx` is a thin trigger wrapper).
 
 ## Repo + git/SSH setup (important)
@@ -108,12 +109,13 @@ All in main:
 14. **Customers** (read-only list at `/dashboard/customers`) — customers are created as a side effect of review requests, not added directly; `GET /customers` + `CustomersRepository`. See [docs/customers.md](docs/customers.md).
 15. **Review requests** — single + bulk "Request a review" (the `Customer` is upserted in the background; single = dialog, bulk = CSV); a default campaign is auto-created lazily; the public `/rate/[token]` page (rating ≥ `positiveRatingThreshold` → the Google review link, below → a private feedback form → `FeedbackSubmission`); a requests list; `customerCooldownDays` guard. **No email send yet** — the dashboard hands you the rate link to share. See [docs/review-requests.md](docs/review-requests.md).
 16. **Web data-layer cleanup** — `apps/web/app/dashboard/layout.tsx` + `dashboard-shell.tsx` make the sidebar/header a persistent shell (no more full-page reload / white flash when switching tabs or locations — location switch is now a soft `router.replace` of `?location=`). TanStack Query for mutations (one `useMutation` hook per write endpoint in `apps/web/hooks/`), reads stay server-rendered. Shared wire types in `@rater/types`. Request timeouts in the fetch helpers. See [docs/architecture.md](docs/architecture.md) → Web app.
+17. **Campaigns** — a `campaigns` API module (`GET`/`POST`/`PATCH`/`DELETE`, no migration — the schema already had `Campaign`/`CampaignStep`) + the `/dashboard/campaigns` tab: a list, and a per-campaign editor for the name, the initial email, and follow-up steps (preset triggers + a "send after N days"), with a live client-side `{{token}}` preview. "Default" = the location's newest active campaign; review-request creation takes an optional `campaignId` (the dialogs show a picker when there's more than one). **Nothing sends or schedules the steps yet** — editor only; the seed-campaign lazy-create moved from `ReviewRequestsRepository` to `CampaignsRepository.getOrCreateDefault`. See [docs/campaigns.md](docs/campaigns.md).
 
 ## File patterns to know
 
 - `apps/api/src/auth/auth.guard.ts` — JWT verification via JWKS; lazy-init the `createRemoteJWKSet`
 - `apps/api/src/prisma/prisma.service.ts` — extends `PrismaClient` + `onModuleInit`/`onModuleDestroy`
-- `apps/api/src/{onboarding,locations,invitations}/` — module/controller/service/dto pattern. All use `class-validator` DTOs and the global `ValidationPipe`. All authed routes use `@UseGuards(AuthGuard)`.
+- `apps/api/src/{onboarding,locations,invitations,customers,campaigns,review-requests}/` — module/controller/service/repository/mapper/dto pattern. All use `class-validator` DTOs and the global `ValidationPipe`. All authed routes use `@UseGuards(AuthGuard)`. `campaigns` exports `CampaignsRepository` (consumed by `review-requests` to resolve a request's campaign).
 - `apps/api/src/me/me.controller.ts` — single fetch returns `{ id, email, onboarded, locations[] }` for the dashboard
 - `apps/web/lib/supabase/{server,client,middleware}.ts` — three Supabase clients for the three Next.js contexts. Strict-typed cookie callbacks.
 - `apps/web/middleware.ts` — gates `/dashboard`, redirects to `/sign-in`. Calls `updateSession`.
@@ -126,11 +128,10 @@ All in main:
 
 The core review-request loop is in (single + bulk request creation, the public rating page — see [docs/review-requests.md](docs/review-requests.md)). Roughly in order, each its own PR + `docs/*.md`:
 
-1. **Actual email send + Postmark** — wire `Postmark` (per-location server token + from-domain in a Settings page), swap the "copy the link" UI for a real send via the worker, add the Postmark webhook to move `deliveryStatus` / `engagementStatus`.
-2. **Follow-up steps + scheduler** — beyond the `initial` step: `ReviewRequestStepExecution` + a BullMQ scheduler that fires steps when the `CampaignStep.requiredState` predicate matches (e.g. "not opened after N days", "rated positive but no Google review yet").
-3. **Campaign editor** — UI to edit the campaign's step templates / delays (with a `{{...}}` rendering engine).
-4. **Dashboard wiring** — turn the three "Overview" stat cards into real counts; a fuller requests table (filters, engagement timeline).
-5. **Google-review attribution** — incremental review syncs (the `ReviewSync` machinery exists), matching a posted Google review back to a request, a manual-confirmation queue for low-confidence matches.
+1. **Actual email send + Postmark** — wire `Postmark` (per-location server token + from-domain in a Settings page), swap the "copy the link" UI for a real send via the worker, add the `{{...}}` render-and-send engine (the campaign editor only has a client-side preview today), add the Postmark webhook to move `deliveryStatus` / `engagementStatus`.
+2. **Follow-up step scheduler** — the campaign editor lets you *configure* follow-up steps; now make them fire: `ReviewRequestStepExecution` + a BullMQ scheduler that runs a step when the `CampaignStep.requiredState` predicate matches (e.g. "not rated after N days", "rated positive but no Google review yet").
+3. **Dashboard wiring** — turn the three "Overview" stat cards into real counts; a fuller requests table (filters, engagement timeline).
+4. **Google-review attribution** — incremental review syncs (the `ReviewSync` machinery exists), matching a posted Google review back to a request, a manual-confirmation queue for low-confidence matches.
 
 ## Required external services (status)
 

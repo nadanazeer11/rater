@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth-user.type';
+import { CampaignsRepository } from '../campaigns/campaigns.repository';
 import { CustomersRepository } from '../customers/customers.repository';
 import type { CreateReviewRequestDto } from './dto/create-review-request.dto';
 import type { FeedbackDto } from './dto/feedback.dto';
@@ -38,6 +39,7 @@ export class ReviewRequestsService {
   constructor(
     private readonly repo: ReviewRequestsRepository,
     private readonly customers: CustomersRepository,
+    private readonly campaigns: CampaignsRepository,
   ) {}
 
   private rateUrl(token: string): string {
@@ -52,14 +54,19 @@ export class ReviewRequestsService {
     }
   }
 
-  /** The location's review-request campaign. Created on first use. (No unique
-   *  constraint on it — a concurrent first request could create two; harmless,
-   *  the earliest one wins on the next call.) */
-  private async getOrCreateDefaultCampaign(locationId: string): Promise<string> {
-    const existing = await this.repo.findDefaultCampaign(locationId);
-    if (existing) return existing.id;
-    const created = await this.repo.createDefaultCampaign(locationId);
-    return created.id;
+  /** Resolve which campaign a request runs: the caller's pick (validated against
+   *  the location) or the location's default (newest active, created on first use). */
+  private async resolveCampaignId(
+    locationId: string,
+    campaignId: string | undefined,
+  ): Promise<string> {
+    if (campaignId) {
+      const campaign = await this.campaigns.findActiveByIdAndLocation(campaignId, locationId);
+      if (!campaign) throw new NotFoundException('Campaign not found.');
+      return campaign.id;
+    }
+    const { id } = await this.campaigns.getOrCreateDefault(locationId);
+    return id;
   }
 
   async createOne(
@@ -90,7 +97,7 @@ export class ReviewRequestsService {
       );
     }
 
-    const campaignId = await this.getOrCreateDefaultCampaign(dto.locationId);
+    const campaignId = await this.resolveCampaignId(dto.locationId, dto.campaignId);
     const req = await this.repo.createRequestWithEvent({
       locationId: dto.locationId,
       customerId: customer.id,
@@ -140,7 +147,7 @@ export class ReviewRequestsService {
       await this.repo.findRecentRequestCustomerIds([...customerIdByEmail.values()], since),
     );
 
-    const campaignId = await this.getOrCreateDefaultCampaign(dto.locationId);
+    const campaignId = await this.resolveCampaignId(dto.locationId, dto.campaignId);
     for (const row of rows) {
       let customerId = customerIdByEmail.get(row.email);
       if (customerId && recentIds.has(customerId)) {

@@ -6,7 +6,7 @@ import { apiPost } from '@/lib/api';
 import type { ImportRequestsResult } from '@rater/types';
 
 type Row = { email: string; name?: string; phone?: string };
-type Input = { locationId: string; rows: Row[] };
+type Input = { locationId: string; campaignId?: string; rows: Row[] };
 
 export function useImportReviewRequests() {
   const router = useRouter();

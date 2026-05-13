@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 import { AuthModule } from './auth/auth.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 import { CommonModule } from './common/common.module';
 import { CustomersModule } from './customers/customers.module';
 import { HealthModule } from './health/health.module';
@@ -28,6 +29,7 @@ import { ReviewRequestsModule } from './review-requests/review-requests.module';
     OnboardingModule,
     LocationsModule,
     CustomersModule,
+    CampaignsModule,
     ReviewRequestsModule,
     InvitationsModule,
   ],

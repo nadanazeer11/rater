@@ -1,7 +1,7 @@
 # Review requests
 
-> **Scope:** the `ReviewRequest` lifecycle and the public rating/feedback flow — creating requests (single + bulk CSV, which upsert the `Customer`), the `/rate/[publicToken]` page, routing a rating to Google vs a private feedback form. For the `Customer` model + repo see [docs/customers.md](customers.md). For the API layering see [docs/architecture.md](architecture.md). For Google-review *attribution* (matching a posted Google review back to a request) — not built yet; will get its own doc.
-> **Last updated:** 2026-05-11 (PR — `feat/review-requests`)
+> **Scope:** the `ReviewRequest` lifecycle and the public rating/feedback flow — creating requests (single + bulk CSV, which upsert the `Customer`), the `/rate/[publicToken]` page, routing a rating to Google vs a private feedback form. For the `Customer` model + repo see [docs/customers.md](customers.md). For campaigns (the `Campaign`/`CampaignStep` model + editor) see [docs/campaigns.md](campaigns.md). For the API layering see [docs/architecture.md](architecture.md). For Google-review *attribution* (matching a posted Google review back to a request) — not built yet; will get its own doc.
+> **Last updated:** 2026-05-11 (PR — `feat/campaigns`)
 
 ## What it is
 
@@ -15,7 +15,7 @@ The product's core loop. You "request a review" from a past customer (one at a t
 
 **Cooldown.** Don't pester the same customer: a new request for a customer who already has a non-deleted `ReviewRequest` created within `Location.customerCooldownDays` (default 90) → `409` on the single path, `skippedCooldown` on the bulk path.
 
-**Default campaign.** `ReviewRequest.campaignId` is required, so each location needs a `Campaign`. We create one **lazily** on the first request — `getOrCreateDefaultCampaign(locationId)`: a `Campaign{name:'Review requests', isActive:true}` + one `CampaignStep{stepOrder:1, stepType:'initial', delayDays:0, delayAnchor:'request_created', requiredState:{}, subjectTemplate, bodyTemplate}` (placeholder template text — there's no template-rendering engine yet; that lands with Postmark). There's **no unique constraint** on campaigns, so two concurrent first-requests could create two campaigns — harmless, the earliest one wins on the next call; chose this over a migration.
+**Which campaign.** `ReviewRequest.campaignId` is required. `POST /review-requests` and `/import` take an **optional `campaignId`** — given, it's validated against the location (`CampaignsRepository.findActiveByIdAndLocation`, 404 if it doesn't match); omitted, it falls back to the location's **default = newest active campaign**, created lazily on first use (`CampaignsRepository.getOrCreateDefault` — a `Campaign{name:'Review requests'}` + one seed `initial` step with placeholder template text; there's no unique constraint, so two concurrent first-requests could create two campaigns — harmless, newest wins next time; chose this over a migration). The web's "Request a review" / "Request from CSV" dialogs show a campaign dropdown (only when there's more than one) pre-selected to the default. See [docs/campaigns.md](campaigns.md). (The lazy-create logic used to live in `ReviewRequestsRepository` as `findDefaultCampaign`/`createDefaultCampaign`; it moved to `CampaignsRepository`.)
 
 **Public token flow** (no auth — these routes have no `AuthGuard`):
 - `GET /review-requests/by-token/:token` → `{ businessName, locationName, alreadyRated, rating, googleReviewUrl }` (the `googleReviewUrl` lets the "you already rated" screen still offer a "post on Google" link). Side effect: if `engagementStatus === 'not_opened'` it bumps it to `'landing_viewed'`. **Sharp edge:** that `=== 'not_opened'` check is only correct while `'opened'` / `'link_clicked'` are never set (no Postmark email-tracking webhook yet). Once those go live, a recipient who'd reached `'opened'` and then lands here would *not* get upgraded — change the guard to `!== 'landing_viewed'` (or a proper forward-only rank check) when wiring the webhook.
@@ -45,8 +45,8 @@ The product's core loop. You "request a review" from a past customer (one at a t
 ## Not done yet
 
 - **No email send.** Nothing actually emails the rate link — the dashboard gives you the link to send manually. Postmark + delivery/open/bounce webhooks (which move `deliveryStatus`/`engagementStatus`) are a later PR.
-- **No follow-up steps.** Only the `initial` campaign step exists, and nothing schedules/executes steps — the `ReviewRequestStepExecution` model is unused. Follow-ups (e.g. "not opened after N days", "happy but no Google review") + a scheduler are a later PR.
-- **No campaign editor** — the default template is hardcoded and never rendered (no `{{...}}` engine yet).
+- **No follow-up step *execution*.** You can now configure follow-up steps in the campaign editor ([docs/campaigns.md](campaigns.md)), but nothing schedules/runs them — the `ReviewRequestStepExecution` model is unused. A scheduler that matches `CampaignStep.requiredState` and fires steps is a later PR. So in practice only the `initial` step matters today.
+- **No `{{...}}` render engine in the API.** The campaign editor has a client-side preview, but the canonical render-and-send engine lands with Postmark.
 - **No attribution sync** — `googleAttributionStatus` only ever advances to `pending_check` (on a positive rating that had a Google URL); nothing yet resolves it to `confirmed_posted` / `posted_low_confidence` / `not_posted`. Matching a posted Google review back to a request comes with the review-sync work, which will also decide whether to sweep negative / non-rating requests too (see the "track click-through" / attribution discussion).
 - **No dashboard wiring** — the dashboard's three "Overview" stat cards are still placeholders (`0`); a fuller requests table (filtering, the engagement timeline) is deferred.
 - **No re-send / cancel** of a request; no per-request detail page.
