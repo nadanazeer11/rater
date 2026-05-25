@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Requests', icon: SendRoundedIcon, path: '/dashboard/requests' },
   { label: 'Customers', icon: GroupsRoundedIcon, path: '/dashboard/customers' },
   { label: 'Campaigns', icon: CampaignRoundedIcon, path: '/dashboard/campaigns' },
-  { label: 'Reviews', icon: RateReviewRoundedIcon },
+  { label: 'Reviews', icon: RateReviewRoundedIcon, path: '/dashboard/reviews' },
   { label: 'Settings', icon: SettingsRoundedIcon },
 ];
 
