@@ -22,7 +22,7 @@ import type {
 import { toRequestSummary } from './review-requests.mapper';
 import { ReviewRequestsRepository } from './review-requests.repository';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DAY_MS = 86_400_000;
 

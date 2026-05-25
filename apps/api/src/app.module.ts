@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CommonModule } from './common/common.module';
 import { CustomersModule } from './customers/customers.module';
+import { GoogleReviewsModule } from './google-reviews/google-reviews.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { LocationsModule } from './locations/locations.module';
@@ -31,6 +32,7 @@ import { ReviewRequestsModule } from './review-requests/review-requests.module';
     CustomersModule,
     CampaignsModule,
     ReviewRequestsModule,
+    GoogleReviewsModule,
     InvitationsModule,
   ],
 })

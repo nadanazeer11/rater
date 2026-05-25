@@ -15,7 +15,7 @@ import { toInvitationCreated, toInvitationDetails } from './invitations.mapper';
 import { InvitationsRepository } from './invitations.repository';
 
 const INVITATION_TTL_DAYS = 7;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001';
 
 function generateToken(): string {
   return randomBytes(24).toString('base64url');

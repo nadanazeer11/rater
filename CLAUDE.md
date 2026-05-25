@@ -17,6 +17,7 @@ Index:
 - [docs/review-requests.md](docs/review-requests.md) — the `ReviewRequest` lifecycle: single + bulk "Request a review" (the `Customer` is upserted in the background), the lazily-created default campaign, the public `/rate/[token]` page, routing a rating to Google vs a private feedback form, the cooldown.
 - [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `CustomersRepository` (consumed by review-requests to upsert/look up customers), the read-only `/dashboard/customers` list. Customers are created via review requests, not directly.
 - [docs/campaigns.md](docs/campaigns.md) — Campaigns: the `Campaign`/`CampaignStep` model, the `/dashboard/campaigns` editor (name + email steps + follow-up triggers, live `{{token}}` preview), "newest active = default", the campaign picker on review requests. Nothing sends/schedules yet — editor only.
+- [docs/google-reviews.md](docs/google-reviews.md) — Google reviews: the read-only `/dashboard/reviews` list backed by the `GoogleReview` table the scrape worker populates. No mutations — purely a window onto the scrape output.
 
 ## Stack
 
@@ -51,6 +52,17 @@ Index:
 - **`gh` CLI is NOT installed.** Push branches and provide the auto-returned `https://github.com/nadanazeer11/rater/pull/new/<branch>` URL — user opens PRs manually
 - **Default git's user identity is the work account** — every new branch needs the personal local config. Already set on this repo.
 
+## Running locally
+
+From the monorepo root (`/home/nada/personal/rater`):
+
+```bash
+pnpm dev                       # everything (turbo runs all apps in parallel)
+pnpm --filter @rater/web dev   # frontend only — http://localhost:3001
+pnpm --filter @rater/api dev   # backend only — http://localhost:4000
+pnpm --filter @rater/worker dev  # worker only
+```
+
 ## Dev environment quirks
 
 - **pnpm `10.9.2` doesn't exist on the npm registry** even though it reports as the local version. Use `pnpm@10.33.4` in `packageManager` field (already pinned in root `package.json`)
@@ -68,8 +80,8 @@ Index:
 - **Next.js doesn't auto-load monorepo-root `.env`** — `apps/web/next.config.ts` loads it explicitly via `dotenv`
 - **API loads `.env` from monorepo root** via `@nestjs/config` `envFilePath: [join(__dirname, '../../../.env')]`
 - **`.env.local` is also supported** at the monorepo root, override-style
-- **Default ports:** api 4000, web 3000. May be in use locally — override with `PORT=` env var or `next dev -p 3001`
-- **CORS** in api allows the origin from `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000`)
+- **Default ports:** api 4000, web 3001 (3000 is often taken by other projects locally). Override with `PORT=` env var if needed.
+- **CORS** in api allows the origin from `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3001`)
 - **pnpm warnings about ignored build scripts** (`@nestjs/core`, `@prisma/client`, `prisma`, `sharp`) are expected. Pin in root `package.json`'s `pnpm.onlyBuiltDependencies` if you want them silenced — see `TODO.md`
 
 ## Conventions
@@ -110,12 +122,13 @@ All in main:
 15. **Review requests** — single + bulk "Request a review" (the `Customer` is upserted in the background; single = dialog, bulk = CSV); a default campaign is auto-created lazily; the public `/rate/[token]` page (rating ≥ `positiveRatingThreshold` → the Google review link, below → a private feedback form → `FeedbackSubmission`); a requests list; `customerCooldownDays` guard. **No email send yet** — the dashboard hands you the rate link to share. See [docs/review-requests.md](docs/review-requests.md).
 16. **Web data-layer cleanup** — `apps/web/app/dashboard/layout.tsx` + `dashboard-shell.tsx` make the sidebar/header a persistent shell (no more full-page reload / white flash when switching tabs or locations — location switch is now a soft `router.replace` of `?location=`). TanStack Query for mutations (one `useMutation` hook per write endpoint in `apps/web/hooks/`), reads stay server-rendered. Shared wire types in `@rater/types`. Request timeouts in the fetch helpers. See [docs/architecture.md](docs/architecture.md) → Web app.
 17. **Campaigns** — a `campaigns` API module (`GET`/`POST`/`PATCH`/`DELETE`, no migration — the schema already had `Campaign`/`CampaignStep`) + the `/dashboard/campaigns` tab: a list, and a per-campaign editor for the name, the initial email, and follow-up steps (preset triggers + a "send after N days"), with a live client-side `{{token}}` preview. "Default" = the location's newest active campaign; review-request creation takes an optional `campaignId` (the dialogs show a picker when there's more than one). **Nothing sends or schedules the steps yet** — editor only; the seed-campaign lazy-create moved from `ReviewRequestsRepository` to `CampaignsRepository.getOrCreateDefault`. See [docs/campaigns.md](docs/campaigns.md).
+18. **Reviews tab** — `/dashboard/reviews`, a read-only list of the `GoogleReview` rows the baseline scrape writes. New `google-reviews` API module with offset pagination (page/pageSize, capped at 100), case-insensitive search across reviewer name + text, a rating filter (1–5), and 4-way sort (newest / oldest / highest / lowest) — all on the backend via Prisma `$transaction(findMany + count)`. Frontend has a debounced search input, rating chips, sort dropdown, and Prev/Next footer; TanStack Query uses `keepPreviousData` so paging doesn't flash a skeleton. Empty state distinguishes "baseline still running" / "baseline done, zero reviews" / "no matches for current filter". No new schema. See [docs/google-reviews.md](docs/google-reviews.md).
 
 ## File patterns to know
 
 - `apps/api/src/auth/auth.guard.ts` — JWT verification via JWKS; lazy-init the `createRemoteJWKSet`
 - `apps/api/src/prisma/prisma.service.ts` — extends `PrismaClient` + `onModuleInit`/`onModuleDestroy`
-- `apps/api/src/{onboarding,locations,invitations,customers,campaigns,review-requests}/` — module/controller/service/repository/mapper/dto pattern. All use `class-validator` DTOs and the global `ValidationPipe`. All authed routes use `@UseGuards(AuthGuard)`. `campaigns` exports `CampaignsRepository` (consumed by `review-requests` to resolve a request's campaign).
+- `apps/api/src/{onboarding,locations,invitations,customers,campaigns,review-requests,google-reviews}/` — module/controller/service/repository/mapper/dto pattern. All use `class-validator` DTOs and the global `ValidationPipe`. All authed routes use `@UseGuards(AuthGuard)`. `campaigns` exports `CampaignsRepository` (consumed by `review-requests` to resolve a request's campaign).
 - `apps/api/src/me/me.controller.ts` — single fetch returns `{ id, email, onboarded, locations[] }` for the dashboard
 - `apps/web/lib/supabase/{server,client,middleware}.ts` — three Supabase clients for the three Next.js contexts. Strict-typed cookie callbacks.
 - `apps/web/middleware.ts` — gates `/dashboard`, redirects to `/sign-in`. Calls `updateSession`.

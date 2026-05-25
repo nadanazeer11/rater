@@ -39,6 +39,29 @@ export interface CustomerSummary {
   createdAt: string;
 }
 
+export interface GoogleReviewSummary {
+  id: string;
+  externalId: string;
+  reviewerName: string;
+  reviewerAvatarUrl: string | null;
+  rating: number;
+  text: string | null;
+  language: string | null;
+  postedAt: string;
+  attributedReviewRequestId: string | null;
+  attributionConfidence: string | null;
+  createdAt: string;
+}
+
+export type GoogleReviewsSort = 'newest' | 'oldest' | 'highest' | 'lowest';
+
+export interface GoogleReviewsPage {
+  items: GoogleReviewSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface RequestSummary {
   id: string;
   customer: { name: string | null; email: string };
