@@ -16,7 +16,7 @@ type Stage =
   | { kind: 'done'; result: ImportRequestsResult };
 
 function summarize(r: ImportRequestsResult): string {
-  const parts: string[] = [`${r.created} request${r.created === 1 ? '' : 's'} created`];
+  const parts: string[] = [`${r.created} email${r.created === 1 ? '' : 's'} sent`];
   if (r.skippedCooldown > 0) parts.push(`${r.skippedCooldown} skipped (recently requested)`);
   if (r.skippedDuplicates > 0) parts.push(`${r.skippedDuplicates} duplicate`);
   if (r.skippedInvalid > 0) parts.push(`${r.skippedInvalid} skipped (bad email)`);
@@ -108,11 +108,11 @@ export function RequestReviewsCsvButton({
                 Bulk review requests
               </p>
               <h2 className="text-xl font-semibold tracking-tight text-ink">
-                {stage.kind === 'done' ? 'Import complete' : 'Upload a CSV'}
+                {stage.kind === 'done' ? 'Emails on their way' : 'Upload a CSV'}
               </h2>
               {stage.kind !== 'done' && (
                 <p className="text-sm leading-relaxed text-muted">
-                  One review request per row. Headers we read:{' '}
+                  One email per row. Headers we read:{' '}
                   <span className="font-mono text-ink">email</span> (required),{' '}
                   <span className="font-mono text-ink">name</span>,{' '}
                   <span className="font-mono text-ink">phone</span> — case-insensitive. Customers

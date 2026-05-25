@@ -14,6 +14,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { ReviewRequestsModule } from './review-requests/review-requests.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ReviewRequestsModule } from './review-requests/review-requests.module';
     ReviewRequestsModule,
     GoogleReviewsModule,
     InvitationsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

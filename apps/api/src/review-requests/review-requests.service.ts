@@ -8,6 +8,7 @@ import {
 import type { AuthUser } from '../auth/auth-user.type';
 import { CampaignsRepository } from '../campaigns/campaigns.repository';
 import { CustomersRepository } from '../customers/customers.repository';
+import { MailerQueue } from '../queue/mailer.queue';
 import type { CreateReviewRequestDto } from './dto/create-review-request.dto';
 import type { FeedbackDto } from './dto/feedback.dto';
 import type { ImportReviewRequestsDto } from './dto/import-review-requests.dto';
@@ -40,6 +41,7 @@ export class ReviewRequestsService {
     private readonly repo: ReviewRequestsRepository,
     private readonly customers: CustomersRepository,
     private readonly campaigns: CampaignsRepository,
+    private readonly mailer: MailerQueue,
   ) {}
 
   private rateUrl(token: string): string {
@@ -104,6 +106,7 @@ export class ReviewRequestsService {
       campaignId,
       via: 'manual',
     });
+    await this.mailer.enqueueReviewRequestEmail(req.id);
     return { id: req.id, publicToken: req.publicToken, rateUrl: this.rateUrl(req.publicToken) };
   }
 
@@ -164,12 +167,13 @@ export class ReviewRequestsService {
         });
         customerId = c.id;
       }
-      await this.repo.createRequestWithEvent({
+      const req = await this.repo.createRequestWithEvent({
         locationId: dto.locationId,
         customerId,
         campaignId,
         via: 'csv',
       });
+      await this.mailer.enqueueReviewRequestEmail(req.id);
       created += 1;
     }
 

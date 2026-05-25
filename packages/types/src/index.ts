@@ -1,4 +1,5 @@
 export * from './api';
+export * from './templates';
 
 export type ApiErrorCode =
   | 'BAD_REQUEST'

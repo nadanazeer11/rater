@@ -6,18 +6,14 @@ import {
   Button,
   Dialog,
   DialogContent,
-  IconButton,
   TextField,
-  Tooltip,
 } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import MarkEmailReadRoundedIcon from '@mui/icons-material/MarkEmailReadRounded';
 import type { CampaignSummary } from '@rater/types';
 import { useCreateReviewRequest } from '@/hooks/use-create-review-request';
-import { useClipboard } from '@/hooks/use-clipboard';
 import { CampaignSelect, defaultCampaignId } from './campaign-select';
 
-type Stage = { kind: 'form' } | { kind: 'done'; rateUrl: string; email: string };
+type Stage = { kind: 'form' } | { kind: 'done'; email: string };
 
 export function RequestReviewButton({
   locationId,
@@ -33,7 +29,6 @@ export function RequestReviewButton({
   const [phone, setPhone] = useState('');
   const [campaignId, setCampaignId] = useState(() => defaultCampaignId(campaigns));
   const createRequest = useCreateReviewRequest();
-  const { copied, copy } = useClipboard();
   const submitting = createRequest.isPending;
 
   function handleClose() {
@@ -63,8 +58,7 @@ export function RequestReviewButton({
         },
       },
       {
-        onSuccess: (res) =>
-          setStage({ kind: 'done', rateUrl: res.rateUrl, email: trimmedEmail }),
+        onSuccess: () => setStage({ kind: 'done', email: trimmedEmail }),
       },
     );
   }
@@ -146,41 +140,25 @@ export function RequestReviewButton({
             </form>
           ) : (
             <div className="flex flex-col gap-6">
-              <div className="space-y-1.5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-                  Link ready
-                </p>
-                <h2 className="text-xl font-semibold tracking-tight text-ink">
-                  Send this rating link
-                </h2>
-                <p className="text-sm leading-relaxed text-muted">
-                  Send it to <span className="font-medium text-ink">{stage.email}</span>. They tap
-                  a rating — a high one goes to your Google listing, a low one comes back to you
-                  privately.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-bg py-1.5 pl-3 pr-1.5">
-                <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-muted">
-                  {stage.rateUrl}
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+                  <MarkEmailReadRoundedIcon fontSize="small" />
                 </span>
-                <Tooltip title={copied ? 'Copied' : 'Copy link'}>
-                  <IconButton
-                    size="small"
-                    onClick={() => copy(stage.rateUrl)}
-                    color={copied ? 'primary' : 'default'}
-                  >
-                    {copied ? (
-                      <CheckRoundedIcon fontSize="small" />
-                    ) : (
-                      <ContentCopyIcon fontSize="small" />
-                    )}
-                  </IconButton>
-                </Tooltip>
+                <div className="space-y-1.5">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+                    Sent
+                  </p>
+                  <h2 className="text-xl font-semibold tracking-tight text-ink">
+                    Email on its way
+                  </h2>
+                  <p className="text-sm leading-relaxed text-muted">
+                    We sent the rating link to{' '}
+                    <span className="font-medium text-ink">{stage.email}</span>. When they tap a
+                    rating, a high one goes to your Google listing; a low one comes back to you
+                    privately.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs leading-relaxed text-faint">
-                Automatic email delivery comes in a later update — share this link manually for
-                now.
-              </p>
               <div className="flex justify-end">
                 <Button variant="contained" onClick={handleClose}>
                   Done

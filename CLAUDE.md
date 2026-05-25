@@ -18,6 +18,7 @@ Index:
 - [docs/customers.md](docs/customers.md) — Customers: the `Customer` model, the `CustomersRepository` (consumed by review-requests to upsert/look up customers), the read-only `/dashboard/customers` list. Customers are created via review requests, not directly.
 - [docs/campaigns.md](docs/campaigns.md) — Campaigns: the `Campaign`/`CampaignStep` model, the `/dashboard/campaigns` editor (name + email steps + follow-up triggers, live `{{token}}` preview), "newest active = default", the campaign picker on review requests. Nothing sends/schedules yet — editor only.
 - [docs/google-reviews.md](docs/google-reviews.md) — Google reviews: the read-only `/dashboard/reviews` list backed by the `GoogleReview` table the scrape worker populates. No mutations — purely a window onto the scrape output.
+- [docs/sending.md](docs/sending.md) — Sending: how the initial review-request email leaves the system (Postmark queue + worker + webhook), the `ReviewRequestStepExecution` row that anchors webhook updates, the `POSTMARK_SERVER_TOKEN` stub fallback. Follow-up step scheduling is not built yet.
 
 ## Stack
 
@@ -27,7 +28,7 @@ Index:
 - **ORM:** Prisma 6
 - **Auth:** Supabase Auth, magic-link (passwordless). New publishable/secret key model (`sb_publishable_*`, `sb_secret_*`). JWT verified via JWKS using `jose` in api.
 - **Jobs:** BullMQ + Upstash Redis (planned, not yet wired)
-- **Email:** Postmark (planned, not yet wired)
+- **Email:** Postmark (worker sends the initial review-request email; webhook updates `deliveryStatus`/`engagementStatus`)
 - **Reviews data:** Outscraper (planned, not yet wired)
 - **Hosting target:** Vercel (web) + Railway/Fly (api + worker)
 - **Monorepo:** Turborepo + pnpm. `apps/web`, `apps/api`, `apps/worker`, `packages/db`, `packages/types`, `packages/config`. All workspace packages scoped `@rater/*`.
@@ -123,6 +124,7 @@ All in main:
 16. **Web data-layer cleanup** — `apps/web/app/dashboard/layout.tsx` + `dashboard-shell.tsx` make the sidebar/header a persistent shell (no more full-page reload / white flash when switching tabs or locations — location switch is now a soft `router.replace` of `?location=`). TanStack Query for mutations (one `useMutation` hook per write endpoint in `apps/web/hooks/`), reads stay server-rendered. Shared wire types in `@rater/types`. Request timeouts in the fetch helpers. See [docs/architecture.md](docs/architecture.md) → Web app.
 17. **Campaigns** — a `campaigns` API module (`GET`/`POST`/`PATCH`/`DELETE`, no migration — the schema already had `Campaign`/`CampaignStep`) + the `/dashboard/campaigns` tab: a list, and a per-campaign editor for the name, the initial email, and follow-up steps (preset triggers + a "send after N days"), with a live client-side `{{token}}` preview. "Default" = the location's newest active campaign; review-request creation takes an optional `campaignId` (the dialogs show a picker when there's more than one). **Nothing sends or schedules the steps yet** — editor only; the seed-campaign lazy-create moved from `ReviewRequestsRepository` to `CampaignsRepository.getOrCreateDefault`. See [docs/campaigns.md](docs/campaigns.md).
 18. **Reviews tab** — `/dashboard/reviews`, a read-only list of the `GoogleReview` rows the baseline scrape writes. New `google-reviews` API module with offset pagination (page/pageSize, capped at 100), case-insensitive search across reviewer name + text, a rating filter (1–5), and 4-way sort (newest / oldest / highest / lowest) — all on the backend via Prisma `$transaction(findMany + count)`. Frontend has a debounced search input, rating chips, sort dropdown, and Prev/Next footer; TanStack Query uses `keepPreviousData` so paging doesn't flash a skeleton. Empty state distinguishes "baseline still running" / "baseline done, zero reviews" / "no matches for current filter". No new schema. See [docs/google-reviews.md](docs/google-reviews.md).
+19. **Postmark email send (initial step)** — creating a review request (single or bulk) now enqueues a `send-review-request-email` job; the worker fetches the request + customer + location + business + the campaign's `initial` step, renders subject/body via the shared `renderTemplate` (the same helper the editor preview uses, moved to `packages/types/src/templates.ts`), and sends via Postmark. Per send writes a `ReviewRequestStepExecution` row (with a new `@unique` constraint on `postmarkMessageId` so the webhook lookup is a point read) and flips `ReviewRequest.deliveryStatus`. New `WebhooksModule` at `POST /webhooks/postmark` (HTTP Basic auth via env) consumes Postmark's Delivery/Bounce/Open/SpamComplaint events and updates `deliveryStatus` / `engagementStatus` + `Customer.emailStatus`. The request dialogs drop the copy-link UI for a "Sent ✓" confirmation; the per-row copy-link button on the requests list stays for ops debugging. Postmark token + from-email + webhook Basic Auth are env-only for now (no per-location Settings UI yet — `Location.postmarkServerToken` / `fromEmailDomain` columns stay unused). Stub fallback: missing/`stub` `POSTMARK_SERVER_TOKEN` → emails logged not sent, `deliveryStatus` still flips, dev loop works end-to-end. **Follow-up steps still don't fire.** See [docs/sending.md](docs/sending.md).
 
 ## File patterns to know
 
@@ -141,8 +143,8 @@ All in main:
 
 The core review-request loop is in (single + bulk request creation, the public rating page — see [docs/review-requests.md](docs/review-requests.md)). Roughly in order, each its own PR + `docs/*.md`:
 
-1. **Actual email send + Postmark** — wire `Postmark` (per-location server token + from-domain in a Settings page), swap the "copy the link" UI for a real send via the worker, add the `{{...}}` render-and-send engine (the campaign editor only has a client-side preview today), add the Postmark webhook to move `deliveryStatus` / `engagementStatus`.
-2. **Follow-up step scheduler** — the campaign editor lets you *configure* follow-up steps; now make them fire: `ReviewRequestStepExecution` + a BullMQ scheduler that runs a step when the `CampaignStep.requiredState` predicate matches (e.g. "not rated after N days", "rated positive but no Google review yet").
+1. **Follow-up step scheduler** — the campaign editor lets you *configure* follow-up steps; now make them fire: a BullMQ scheduler that runs a step when the `CampaignStep.requiredState` predicate matches (e.g. "not rated after N days", "rated positive but no Google review yet"). The send pipeline + `ReviewRequestStepExecution` are already wired by the Postmark PR — this PR adds the scheduler that creates the executions on time.
+2. **Per-location Postmark settings UI** — a `/dashboard/settings` page (admin-only) for `Location.fromEmailDomain` / `postmarkServerToken` / `postmarkMessageStream`, plus `PATCH /locations/:id`. Needed before we exit Postmark test mode and serve multiple verified sender domains.
 3. **Dashboard wiring** — turn the three "Overview" stat cards into real counts; a fuller requests table (filters, engagement timeline).
 4. **Google-review attribution** — incremental review syncs (the `ReviewSync` machinery exists), matching a posted Google review back to a request, a manual-confirmation queue for low-confidence matches.
 
@@ -154,7 +156,7 @@ The core review-request loop is in (single + bulk request creation, the public r
 | Google Places API | ✅ wired | Onboarding location picker (`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`) |
 | Outscraper | ✅ wired (stubbed locally if `OUTSCRAPER_API_KEY` unset) | Baseline scrape + future Google review syncs |
 | Upstash Redis | ✅ wired (`REDIS_URL`; the API producer no-ops if unset) | BullMQ queue backend |
-| Postmark | ⏳ next up | Email delivery (review-request emails; later: branded magic-link) |
+| Postmark | ✅ wired (stubbed locally if `POSTMARK_SERVER_TOKEN` unset) | Email delivery (initial review-request email; later: follow-ups, branded magic-link) |
 | Sentry / BetterStack | ⏳ deferred | Observability |
 
 ## TODO.md

@@ -18,6 +18,7 @@ import type {
   CampaignStepInput,
   CampaignStepType,
 } from '@rater/types';
+import { TEMPLATE_TOKENS, renderTemplate } from '@rater/types';
 import { useUpdateCampaign } from '@/hooks/use-update-campaign';
 import { useArchiveCampaign } from '@/hooks/use-archive-campaign';
 import { useCampaigns } from '@/hooks/use-campaigns';
@@ -28,8 +29,6 @@ type Toast = { severity: 'success' | 'error'; message: string };
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ??
   (typeof window !== 'undefined' ? window.location.origin : '');
-
-const TOKENS = ['name', 'location', 'business', 'rate_link'] as const;
 
 /** A campaign is `initial` + at most this many follow-ups. */
 const MAX_FOLLOW_UPS = 2;
@@ -83,13 +82,6 @@ const FOLLOW_UP_PRESETS: Record<
 
 function followUpKeyFor(stepType: CampaignStepType): FollowUpKey {
   return stepType === 'follow_up_no_google_review' ? 'no_google_review' : 'no_rating';
-}
-
-function renderTemplate(tpl: string, vars: Record<string, string>): string {
-  return tpl.replace(
-    /\{\{\s*([a-z_]+)\s*\}\}/gi,
-    (_m, key: string) => vars[key] ?? `{{${key}}}`,
-  );
 }
 
 type EditorStep = CampaignStepInput;
@@ -356,7 +348,7 @@ export function CampaignEditor({ campaign }: { campaign: CampaignDetail }) {
                     />
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs text-faint">Insert:</span>
-                      {TOKENS.map((t) => (
+                      {TEMPLATE_TOKENS.map((t) => (
                         <button
                           key={t}
                           type="button"

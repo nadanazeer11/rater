@@ -266,7 +266,7 @@ model ReviewRequestStepExecution {
   executedAt   DateTime? @map("executed_at")
   status       String    @default("scheduled") // 'scheduled' | 'executed' | 'skipped' | 'failed'
 
-  postmarkMessageId String? @map("postmark_message_id")
+  postmarkMessageId String? @unique @map("postmark_message_id")
   errorMessage      String? @map("error_message") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
