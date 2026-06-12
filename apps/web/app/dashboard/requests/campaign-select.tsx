@@ -3,7 +3,9 @@
 import { MenuItem, TextField } from '@mui/material';
 import type { CampaignSummary } from '@rater/types';
 
-/** Renders nothing when there's only one campaign — the request just uses it. */
+/** Renders nothing only when there are no campaigns at all — with one campaign
+ *  the dropdown still shows, locked to that campaign, so the admin always sees
+ *  which campaign their request will run. */
 export function CampaignSelect({
   campaigns,
   value,
@@ -15,7 +17,7 @@ export function CampaignSelect({
   onChange: (id: string) => void;
   disabled?: boolean;
 }) {
-  if (campaigns.length < 2) return null;
+  if (campaigns.length === 0) return null;
   return (
     <TextField
       select
