@@ -191,7 +191,7 @@ export class ReviewRequestsService {
   async getByToken(token: string): Promise<PublicReviewRequestDto> {
     const r = await this.repo.findByPublicToken(token);
     if (!r) throw new NotFoundException('This review link is not valid.');
-    if (r.engagementStatus === 'not_opened') {
+    if (r.engagementStatus !== 'landing_viewed') {
       await this.repo.markLanded(r.id);
     }
     return {
