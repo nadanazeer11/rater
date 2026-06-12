@@ -1,0 +1,32 @@
+running the proj
+
+
+Three terminals, one-time setup is done — you just need to start things back up:
+
+T1 — tunnel:
+
+
+ngrok http 4000
+Copy the new https://…ngrok-free.app URL it prints.
+
+T2 — re-point the Postmark webhook (only if the ngrok URL changed):
+
+Check what's there:
+
+
+./scripts/postmark/list-webhooks.sh
+If the listed Url doesn't match your current ngrok URL: delete the old one in the Postmark dashboard (Server → Webhooks → click the row → Delete), then:
+
+
+./scripts/postmark/create-webhook.sh https://<your-new-ngrok-host>/webhooks/postmark
+If the URL matches what's already there, skip this step entirely.
+
+T3 — the apps:
+
+
+pnpm dev
+Wait for the worker to log:
+
+
+BullMQ worker ready on queue "baseline-scrape"
+BullMQ worker ready on queue "send-review-request-email"
