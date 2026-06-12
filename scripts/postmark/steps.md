@@ -67,30 +67,43 @@ Forwarding                    https://abc1-23-45-678-901.ngrok-free.app -> http:
 
 **Copy that `https://…ngrok-free.app` URL.** You'll use it in the next step. Leave this terminal running — closing it kills the tunnel.
 
-> Heads up: free ngrok gives a new URL every restart. If you stop ngrok and start it again, you'll get a different URL and have to re-create the webhook (steps 3 below).
+> Heads up: free ngrok gives a new URL every restart. If you stop ngrok and start it again, you'll get a different URL and have to point Postmark at the new one (see Terminal 2 below).
 
 ---
 
-### Terminal 2 — provision the Postmark webhook
+### Terminal 2 — provision (or re-point) the Postmark webhook
 
 From the repo root:
 
 ```bash
 cd ~/personal/rater
 
-# 1. See what's already on this Postmark server
+# Sanity-check what's already there
 ./scripts/postmark/list-webhooks.sh
 ```
 
-If anything is listed pointing at an old ngrok URL, delete it in the Postmark dashboard (Server → Webhooks → click the row → Delete) so you don't have two stale ones firing into nothing.
+Then **one** of these, depending on what you saw:
+
+**A. No webhook exists yet** (first time, or after `Webhooks: []`):
 
 ```bash
-# 2. Create a new webhook at your current ngrok URL.
-#    NOTE the path: /webhooks/postmark — that's the route the API listens on.
+# Create a new webhook at your current ngrok URL.
+# NOTE the path: /webhooks/postmark — that's the route the API listens on.
 ./scripts/postmark/create-webhook.sh https://abc1-23-45-678-901.ngrok-free.app/webhooks/postmark
 ```
 
-On success you'll see JSON with an `"ID"` (the webhook's Postmark ID — save it for reference), the URL, and the four enabled triggers (Delivery, Bounce, SpamComplaint, Open). If you see `422` / `400` from the API, the script's last `curl` line will print the error — usually means a missing env var or an unverified sender signature.
+**B. A webhook exists but its `Url` doesn't match your current ngrok URL** (the common case after a tunnel restart):
+
+```bash
+# Update the existing webhook in place — no need to delete first.
+# Finds the webhook ID by message stream and PUTs the new URL + re-syncs
+# the HttpAuth credentials from .env.
+./scripts/postmark/update-webhook.sh https://abc1-23-45-678-901.ngrok-free.app/webhooks/postmark
+```
+
+**C. The webhook's `Url` already matches your current ngrok URL:** skip this step.
+
+On success you'll see JSON with an `"ID"` (the webhook's Postmark ID) the URL, and the enabled triggers (Delivery, Bounce, SpamComplaint, Open). On failure the last `curl` will print the API error — usually a missing env var or an unverified sender signature.
 
 ---
 
@@ -145,14 +158,14 @@ After the webhook fires, refresh `/dashboard/requests` — the row's `deliverySt
 - **Email doesn't arrive at all.** Check the worker terminal — if the log says `[STUB] would send …`, your `POSTMARK_SERVER_TOKEN` is empty/stub. Set it in `.env` and restart `pnpm dev`. If the log says `Skip send: customer ... emailStatus=…`, your customer's `Customer.emailStatus` isn't `valid` (probably from a previous bounce). Reset it in the DB.
 - **Postmark returns `422 - You are not allowed to send to this recipient`.** You're in test mode — recipient domain isn't verified. Send to `*@nawy.com` only, or verify another sender domain in the Postmark dashboard.
 - **Webhook never fires.** Check ngrok inspector at `localhost:4040`. If there's no incoming request at all, the URL in the Postmark webhook config is wrong — re-run `list-webhooks.sh` and confirm the `Url` matches your current ngrok URL exactly, ending in `/webhooks/postmark`.
-- **Webhook fires but returns `401`.** Basic Auth mismatch. The username/password in `.env` must match what the create script sent to Postmark. Easiest fix: delete the webhook in the Postmark dashboard, double-check `.env`, and re-run `create-webhook.sh`.
+- **Webhook fires but returns `401`.** Basic Auth mismatch. The username/password in `.env` must match what was sent to Postmark. Quickest fix: fix `.env` then run `./scripts/postmark/update-webhook.sh <current-ngrok-url>/webhooks/postmark` — it re-sends `HttpAuth` from your env on every PUT, so the credentials get re-synced without re-creating.
 - `**deliveryStatus` doesn't flip after a successful webhook 200.** The webhook arrived but couldn't find a matching `ReviewRequestStepExecution`. Most likely the request was created BEFORE you ran the migration that added the unique index on `postmarkMessageId` (`20260525160014_step_execution_postmark_unique`). Run a fresh send.
 
 ---
 
 ## Cleanup / repeat runs
 
-- When you stop ngrok and start it again, you'll get a new URL. Delete the old webhook in the Postmark dashboard (or via `DELETE https://api.postmarkapp.com/webhooks/{id}` with the server token) and re-run `create-webhook.sh` with the new URL.
-- A paid ngrok plan gives a static subdomain — set it once in `create-webhook.sh` and you stop having to re-create.
+- When you stop ngrok and start it again, you'll get a new URL. Use **`./scripts/postmark/update-webhook.sh <new-url>`** — it auto-discovers the existing webhook ID and PUTs the new URL. No deleting, no re-creating, no copying IDs.
+- A paid ngrok plan gives a static subdomain — set it once with `create-webhook.sh` and you stop having to touch the webhook at all.
 - Production: this whole flow is replaced by a hosted API URL + Postmark webhook pointing at it. Same script works against the prod token by swapping `.env`.
 

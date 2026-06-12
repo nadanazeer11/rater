@@ -62,16 +62,18 @@ The username/password are an arbitrary shared secret — Postmark doesn't issue 
 ### Running the script
 
 ```bash
-# 1. List existing webhooks on this server (so you know what's there before adding more)
+# 1. List existing webhooks on this server (sanity check)
 ./scripts/postmark/list-webhooks.sh
 
-# 2. Create a webhook pointing at your public URL. In local dev, start an ngrok tunnel first:
-#    ngrok http 4000
-#    → grab the https URL it gives you
+# 2a. First time: create a webhook pointing at your public URL.
+#     Start an ngrok tunnel first: `ngrok http 4000` → grab the https URL.
 ./scripts/postmark/create-webhook.sh https://abcd1234.ngrok-free.app/webhooks/postmark
+
+# 2b. When the ngrok URL rotates: PUT the new URL in place on the existing webhook.
+./scripts/postmark/update-webhook.sh https://NEW-1234.ngrok-free.app/webhooks/postmark
 ```
 
-Both scripts source `.env` from the repo root. They enable `Delivery`, `Bounce`, `SpamComplaint`, and `Open` — the four event types the controller handles — and leave `Click` and `SubscriptionChange` off. To update an existing webhook (e.g. when the ngrok URL changes), either delete it via the Postmark dashboard and re-run the create script, or `PUT https://api.postmarkapp.com/webhooks/{id}` manually.
+All three scripts source `.env` from the repo root. `create-webhook.sh` enables `Delivery`, `Bounce`, `SpamComplaint`, and `Open` — the four event types the controller handles — and leaves `Click` and `SubscriptionChange` off. When the ngrok URL rotates, **`update-webhook.sh <new-url>`** is the fast path: it auto-discovers the existing webhook ID by message stream and PUTs the new URL + re-syncs the `HttpAuth` from `.env` (so a credential rotation is also a one-command operation).
 
 In test mode, Postmark caps you at 100 sends to verified-domain recipients only — sufficient for end-to-end smoke testing against an `@nawy.com` inbox you control.
 
