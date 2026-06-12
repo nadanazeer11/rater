@@ -41,6 +41,40 @@ We could have stored `postmarkMessageId` directly on `ReviewRequest`, since toda
 - `apps/api/src/webhooks/{postmark.controller,postmark.service,webhooks.module}.ts` — inbound delivery/bounce/open/complaint
 - `packages/db/prisma/migrations/20260525160014_step_execution_postmark_unique/` — the unique index that makes the webhook lookup cheap
 
+## Provisioning the Postmark webhook (one-time)
+
+Postmark needs to know where to POST the `Delivery` / `Bounce` / `SpamComplaint` / `Open` events. We provision the subscription via Postmark's API rather than clicking through the dashboard — the script lives in [scripts/postmark/](../scripts/postmark/) so the setup is reproducible across environments (and re-runnable when the ngrok URL changes in local dev).
+
+### Values we use
+
+Stored in `.env` (gitignored), not committed:
+
+| Env var | What it is | Suggested value |
+|---|---|---|
+| `POSTMARK_SERVER_TOKEN` | The "Server API token" from the Postmark dashboard → your server → API Tokens. Authorizes the management call to `POST /webhooks` and the `sendEmail` calls. | (from Postmark) |
+| `POSTMARK_FROM_EMAIL` | A verified Sender Signature on this server (in test mode, has to be a verified domain — for us, an `@nawy.com` address). | e.g. `noreply@nawy.com` |
+| `POSTMARK_MESSAGE_STREAM` | The Postmark message stream. `outbound` is the default transactional stream that every server has. | `outbound` |
+| `POSTMARK_WEBHOOK_USERNAME` | HTTP Basic Auth username Postmark will send with each webhook call; we verify it in [postmark.controller.ts](../apps/api/src/webhooks/postmark.controller.ts). Arbitrary, just needs to match. | `rater-webhook` |
+| `POSTMARK_WEBHOOK_PASSWORD` | HTTP Basic Auth password — the actual shared secret. Generate with `openssl rand -hex 24`. Same value goes into both `.env` *and* the Postmark webhook config. | 48-char hex |
+
+The username/password are an arbitrary shared secret — Postmark doesn't issue them. They exist so unauthenticated callers can't `POST /webhooks/postmark` and forge delivery events.
+
+### Running the script
+
+```bash
+# 1. List existing webhooks on this server (so you know what's there before adding more)
+./scripts/postmark/list-webhooks.sh
+
+# 2. Create a webhook pointing at your public URL. In local dev, start an ngrok tunnel first:
+#    ngrok http 4000
+#    → grab the https URL it gives you
+./scripts/postmark/create-webhook.sh https://abcd1234.ngrok-free.app/webhooks/postmark
+```
+
+Both scripts source `.env` from the repo root. They enable `Delivery`, `Bounce`, `SpamComplaint`, and `Open` — the four event types the controller handles — and leave `Click` and `SubscriptionChange` off. To update an existing webhook (e.g. when the ngrok URL changes), either delete it via the Postmark dashboard and re-run the create script, or `PUT https://api.postmarkapp.com/webhooks/{id}` manually.
+
+In test mode, Postmark caps you at 100 sends to verified-domain recipients only — sufficient for end-to-end smoke testing against an `@nawy.com` inbox you control.
+
 ## Conventions / gotchas
 
 - **Re-fetch in the worker.** Job payload is just `{ reviewRequestId }`. Anything else (email, template text, location name) is fetched fresh — admins can edit the campaign right up to send time and the latest content wins.
