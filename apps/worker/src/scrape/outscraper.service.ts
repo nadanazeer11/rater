@@ -11,6 +11,8 @@ export type FetchedReview = {
   text: string | null;
   language: string | null;
   postedAt: Date;
+  ownerReplyText: string | null;
+  ownerRepliedAt: Date | null;
 };
 
 export type FetchResult = {
@@ -56,6 +58,8 @@ export class OutscraperService {
         .update(`${placeId}:${i}`)
         .digest('hex')
         .slice(0, 24);
+      // Give a couple of stub reviews an owner reply so the reply pipeline has data.
+      const replied = i % 2 === 0;
       return {
         externalId,
         reviewerName: `Stub Reviewer ${i + 1}`,
@@ -64,6 +68,8 @@ export class OutscraperService {
         text: `Stub review #${i + 1} for testing the queue pipeline.`,
         language: 'en',
         postedAt,
+        ownerReplyText: replied ? `Thanks for the feedback, Stub Reviewer ${i + 1}!` : null,
+        ownerRepliedAt: replied ? new Date(postedAt.getTime() + 86_400_000) : null,
       };
     });
 
@@ -155,6 +161,16 @@ export class OutscraperService {
         ? new Date(typeof tsRaw === 'number' ? tsRaw * 1000 : tsRaw)
         : new Date();
 
+      const replyText = (r.owner_answer as string | undefined)?.trim() || null;
+      const replyTsRaw =
+        (r.owner_answer_timestamp_datetime_utc as string | undefined) ??
+        (r.owner_answer_timestamp as number | undefined);
+      const ownerRepliedAt = replyText
+        ? replyTsRaw
+          ? new Date(typeof replyTsRaw === 'number' ? replyTsRaw * 1000 : replyTsRaw)
+          : postedAt
+        : null;
+
       return {
         externalId: id,
         reviewerName: (r.author_title as string | undefined) ?? 'Anonymous',
@@ -163,6 +179,8 @@ export class OutscraperService {
         text: (r.review_text as string | undefined) ?? null,
         language: (r.review_lang as string | undefined) ?? null,
         postedAt,
+        ownerReplyText: replyText,
+        ownerRepliedAt,
       };
     });
 

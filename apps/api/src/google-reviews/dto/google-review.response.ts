@@ -7,6 +7,8 @@ export class GoogleReviewResponseDto {
   text!: string | null;
   language!: string | null;
   postedAt!: Date;
+  ownerReplyText!: string | null;
+  ownerRepliedAt!: Date | null;
   attributedReviewRequestId!: string | null;
   attributionConfidence!: string | null;
   createdAt!: Date;
@@ -17,4 +19,14 @@ export class GoogleReviewsPageDto {
   total!: number;
   page!: number;
   pageSize!: number;
+}
+
+export class ReviewsSummaryDto {
+  total!: number;
+  replied!: number;
+  responseRate!: number;
+}
+
+export class ReviewReplyDraftDto {
+  draft!: string;
 }

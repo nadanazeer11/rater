@@ -40,21 +40,43 @@ export class AttributionProcessor {
       const result = await this.outscraper.fetchAllReviews(location.googlePlaceId);
       let reviewsAdded = 0;
       if (result.reviews.length > 0) {
-        const { count } = await this.prisma.googleReview.createMany({
-          data: result.reviews.map((r) => ({
-            locationId,
-            externalId: r.externalId,
-            reviewerName: r.reviewerName,
-            reviewerAvatarUrl: r.reviewerAvatarUrl,
-            rating: r.rating,
-            text: r.text,
-            language: r.language,
-            postedAt: r.postedAt,
-            firstSeenInSyncId: sync.id,
-          })),
-          skipDuplicates: true,
+        const existing = await this.prisma.googleReview.findMany({
+          where: { locationId, externalId: { in: result.reviews.map((r) => r.externalId) } },
+          select: { externalId: true, ownerReplyText: true },
         });
-        reviewsAdded = count;
+        const existingByExt = new Map(existing.map((e) => [e.externalId, e]));
+
+        const fresh = result.reviews.filter((r) => !existingByExt.has(r.externalId));
+        if (fresh.length > 0) {
+          const { count } = await this.prisma.googleReview.createMany({
+            data: fresh.map((r) => ({
+              locationId,
+              externalId: r.externalId,
+              reviewerName: r.reviewerName,
+              reviewerAvatarUrl: r.reviewerAvatarUrl,
+              rating: r.rating,
+              text: r.text,
+              language: r.language,
+              postedAt: r.postedAt,
+              ownerReplyText: r.ownerReplyText,
+              ownerRepliedAt: r.ownerRepliedAt,
+              firstSeenInSyncId: sync.id,
+            })),
+            skipDuplicates: true,
+          });
+          reviewsAdded = count;
+        }
+
+        // An owner reply may be added to a review we already have — reconcile it.
+        const newlyReplied = result.reviews.filter(
+          (r) => r.ownerReplyText && existingByExt.get(r.externalId)?.ownerReplyText !== r.ownerReplyText,
+        );
+        for (const r of newlyReplied) {
+          await this.prisma.googleReview.updateMany({
+            where: { locationId, externalId: r.externalId },
+            data: { ownerReplyText: r.ownerReplyText, ownerRepliedAt: r.ownerRepliedAt },
+          });
+        }
       }
 
       await this.prisma.reviewSync.update({

@@ -68,6 +68,8 @@ export class ScrapeProcessor {
             text: r.text,
             language: r.language,
             postedAt: r.postedAt,
+            ownerReplyText: r.ownerReplyText,
+            ownerRepliedAt: r.ownerRepliedAt,
             firstSeenInSyncId: sync.id,
           })),
           skipDuplicates: true,

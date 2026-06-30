@@ -492,6 +492,10 @@ model GoogleReview {
   language          String?
   postedAt          DateTime @map("posted_at")
 
+  // Owner's public reply, scraped from Google (Outscraper's owner_answer).
+  ownerReplyText String?   @map("owner_reply_text") @db.Text
+  ownerRepliedAt DateTime? @map("owner_replied_at")
+
   firstSeenInSyncId String     @map("first_seen_in_sync_id")
   firstSeenInSync   ReviewSync @relation("FirstSeen", fields: [firstSeenInSyncId], references: [id])
   removedAt         DateTime?  @map("removed_at")

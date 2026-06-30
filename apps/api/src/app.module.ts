@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
+import { AiModule } from './ai/ai.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AttributionModule } from './attribution/attribution.module';
 import { AuthModule } from './auth/auth.module';
@@ -27,6 +28,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     CommonModule,
     PrismaModule,
     QueueModule,
+    AiModule,
     AuthModule,
     HealthModule,
     MeModule,

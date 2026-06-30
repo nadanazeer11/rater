@@ -160,6 +160,7 @@ The core review-request loop is in (single + bulk request creation, the public r
 | Outscraper | ✅ wired (stubbed locally if `OUTSCRAPER_API_KEY` unset) | Baseline scrape + future Google review syncs |
 | Upstash Redis | ✅ wired (`REDIS_URL`; the API producer no-ops if unset) | BullMQ queue backend |
 | Postmark | ✅ wired (stubbed locally if `POSTMARK_SERVER_TOKEN` unset) | Email delivery (initial review-request email; later: follow-ups, branded magic-link) |
+| Anthropic (Claude) | ✅ wired (stubbed locally if `ANTHROPIC_API_KEY` unset → template/rating fallback) | AI-drafted review replies (Haiku); review sentiment (Phase 9) |
 | Sentry / BetterStack | ⏳ deferred | Observability |
 
 ## TODO.md

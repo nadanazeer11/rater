@@ -30,6 +30,30 @@ export class GoogleReviewsRepository {
     });
   }
 
+  async summary(locationId: string): Promise<{ total: number; replied: number }> {
+    const [total, replied] = await this.prisma.$transaction([
+      this.prisma.googleReview.count({ where: { locationId, removedAt: null } }),
+      this.prisma.googleReview.count({
+        where: { locationId, removedAt: null, ownerReplyText: { not: null } },
+      }),
+    ]);
+    return { total, replied };
+  }
+
+  findForDraft(reviewId: string) {
+    return this.prisma.googleReview.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        locationId: true,
+        reviewerName: true,
+        rating: true,
+        text: true,
+        location: { select: { name: true, business: { select: { name: true } } } },
+      },
+    });
+  }
+
   async listPage(args: ListPageArgs) {
     const { locationId, page, pageSize, search, rating, sort } = args;
 

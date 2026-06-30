@@ -29,6 +29,12 @@ The empty state distinguishes "baseline hasn't finished" (`Location.baselineScra
 - `apps/web/hooks/use-google-reviews.ts` — TanStack Query read hook
 - `packages/types/src/api.ts` — `GoogleReviewSummary` shared type
 
+## Owner replies + AI-drafted replies
+
+- **Replies are scraped, not posted.** Outscraper returns the business's public reply (`owner_answer` + timestamp); the worker saves them to `GoogleReview.ownerReplyText` / `ownerRepliedAt` on baseline + incremental sync (the incremental sync also reconciles a reply newly added to an *existing* review, not just new reviews). We do **not** post replies back to Google — that needs the Google Business Profile API + per-business OAuth (deferred). So a review either already shows the owner's reply, or offers a "Reply with AI" helper.
+- **Responsiveness stat.** `GET /google-reviews/summary?locationId=` returns `{ total, replied, responseRate }` (reviews with a non-null `ownerReplyText`). Shown as a "Responsiveness X%" chip on the reviews page.
+- **AI reply draft.** `POST /google-reviews/:id/draft-reply` calls Claude (`AnthropicService`, Haiku) to draft a short on-brand reply from the review + business name; the owner edits + copies it to paste on Google. **Stub fallback:** with `ANTHROPIC_API_KEY` unset it returns a rating-aware template (same stub pattern as Postmark/Outscraper), so dev works without a key. The draft is ephemeral — we don't store it; the only stored reply is the scraped `ownerReplyText`.
+
 ## Conventions / gotchas
 
 - **Active only.** The list filters `removedAt: null`. When incremental syncs land, a review that disappears from Google gets `removedAt` set but is kept in the DB for audit — the UI just won't show it.

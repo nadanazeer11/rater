@@ -11,6 +11,8 @@ import { Stars } from '@/components/star-rating';
 import { EmptyState } from '@/components/empty-state';
 import { useDashboard } from '../dashboard-context';
 import { PendingMatches } from './pending-matches';
+import { ReviewReply } from './review-reply';
+import { useReviewsSummary } from '@/hooks/use-review-reply';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -98,6 +100,7 @@ function RatingChips({
 export function ReviewsList() {
   const { location } = useDashboard();
   const locationId = location?.id ?? '';
+  const { data: summary } = useReviewsSummary(locationId);
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -146,6 +149,16 @@ export function ReviewsList() {
       <p className="mt-1 text-sm text-muted">
         The latest reviews scraped from this location&apos;s Google listing.
       </p>
+
+      {summary && summary.total > 0 && (
+        <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted">
+          <span className="font-medium text-ink">Responsiveness</span>
+          <span className="font-mono tabular-nums text-ink">{summary.responseRate}%</span>
+          <span className="text-faint">
+            replied to {summary.replied} of {summary.total}
+          </span>
+        </div>
+      )}
 
       <div className="mt-6">
         <PendingMatches />
@@ -242,6 +255,7 @@ export function ReviewsList() {
                       {r.text}
                     </p>
                   )}
+                  <ReviewReply review={r} />
                 </div>
               </article>
             ))}

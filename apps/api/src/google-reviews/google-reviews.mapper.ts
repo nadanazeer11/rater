@@ -14,6 +14,8 @@ export function toGoogleReviewResponse(r: GoogleReview): GoogleReviewResponseDto
     text: r.text,
     language: r.language,
     postedAt: r.postedAt,
+    ownerReplyText: r.ownerReplyText,
+    ownerRepliedAt: r.ownerRepliedAt,
     attributedReviewRequestId: r.attributedReviewRequestId,
     attributionConfidence: r.attributionConfidence,
     createdAt: r.createdAt,

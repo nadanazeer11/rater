@@ -100,9 +100,22 @@ export interface GoogleReviewSummary {
   text: string | null;
   language: string | null;
   postedAt: string;
+  ownerReplyText: string | null;
+  ownerRepliedAt: string | null;
   attributedReviewRequestId: string | null;
   attributionConfidence: AttributionConfidence | null;
   createdAt: string;
+}
+
+export interface ReviewsSummary {
+  total: number;
+  replied: number;
+  /** 0–100. */
+  responseRate: number;
+}
+
+export interface ReviewReplyDraft {
+  draft: string;
 }
 
 /** A tentative (medium/low-confidence) Google-review → request match awaiting an
