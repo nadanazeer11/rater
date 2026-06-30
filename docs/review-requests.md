@@ -31,8 +31,16 @@ The product's core loop. You "request a review" from a past customer (one at a t
 - `packages/db/prisma/schema.prisma` → `Campaign`, `CampaignStep`, `ReviewRequest` (the `ReviewRequest.redirected_to_google_at` column was added in migration `..._review_request_redirected_to_google_at`), `RatingSubmission`, `FeedbackSubmission`, `Event`.
 - `apps/api/src/review-requests/{review-requests.module,review-requests.controller,review-requests.service,review-requests.repository,review-requests.mapper}.ts` + `dto/*`. Registered in `apps/api/src/app.module.ts`; imports `CustomersModule` to inject `CustomersRepository`.
 - `apps/web/app/rate/[token]/{page,rate-form,google-review-link}.tsx` — public rating/feedback page.
-- `apps/web/app/dashboard/requests/{page,request-review-button,request-reviews-csv-button,copy-link-button}.tsx`.
-- `apps/web/app/dashboard/sidebar.tsx` — "Requests" nav item. `apps/web/lib/server-api.ts` — `fetchReviewRequestByToken`, `PublicReviewRequest`. `apps/web/hooks/use-requests.ts` — `useRequests` + `requestsQueryKey`. `apps/web/lib/api.ts` — `apiGet`, `beaconRedirectedToGoogle`. `packages/types/src/api.ts` — `RequestSummary`.
+- `apps/web/app/dashboard/requests/{page,request-review-button,request-reviews-csv-button,copy-link-button,request-timeline-drawer}.tsx`.
+- `apps/web/app/dashboard/sidebar.tsx` — "Requests" nav item. `apps/web/lib/server-api.ts` — `fetchReviewRequestByToken`, `PublicReviewRequest`. `apps/web/hooks/use-requests.ts` — `useRequests` + `requestsQueryKey`. `apps/web/hooks/use-request-timeline.ts` — `useRequestTimeline` (drawer-gated). `apps/web/lib/api.ts` — `apiGet`, `beaconRedirectedToGoogle`. `packages/types/src/api.ts` — `RequestSummary`, `RequestTimeline`, `TimelineEntry`, `TimelineKind`.
+
+## Communication timeline (per request)
+
+- **`GET /review-requests/:id/timeline`** (authed, `assertMember`-guarded) returns a `RequestTimeline`: the current status chips + a time-ordered `TimelineEntry[]` activity log. Clicking a row in the requests list opens a right-hand MUI `Drawer` (`request-timeline-drawer.tsx`) that renders it.
+- **Source of truth = the `Event` log.** The mapper (`toRequestTimeline`) reads each request-scoped `Event` (`review_request_created`, `email_sent`/`email_delivered`/`email_opened`/`email_bounced`/`email_complained`/`email_send_failed`, `redirected_to_google`, `rating_submitted`, `feedback_submitted`) and maps `eventType → { kind, label, detail }`. Detail is pulled from the payload (bounce description, send `errorMessage`, rating value + routing); feedback text is joined from `FeedbackSubmission` (its event payload doesn't carry it).
+- **Unknown event types still render** — they fall back to `kind: 'event'` with a humanized label, so a newly-added `Event.eventType` shows up without a client change (matches the "`eventType` stays open" rule).
+- **Forward-compatible with the scheduler:** `ReviewRequestStepExecution` rows with status `scheduled` / `skipped` are also folded in (a future send, or a step whose predicate didn't match). Executed/failed sends are *not* duplicated — those are already the `email_sent` / `email_send_failed` events. Today, before the scheduler exists, there are none of these rows.
+- The requests list rows also gained the campaign name + a delivery badge + an engagement badge (`RequestSummary.campaignName`).
 
 ## Conventions / gotchas
 
@@ -46,5 +54,5 @@ The product's core loop. You "request a review" from a past customer (one at a t
 
 - **No follow-up step *execution*.** You can now configure follow-up steps in the campaign editor ([docs/campaigns.md](campaigns.md)), but nothing schedules/runs them — the initial-step `ReviewRequestStepExecution` row gets written by the mailer worker, but the scheduler that matches `CampaignStep.requiredState` and fires later steps is a separate PR. So in practice only the `initial` step fires today.
 - **No attribution sync** — `googleAttributionStatus` only ever advances to `pending_check` (on a positive rating that had a Google URL); nothing yet resolves it to `confirmed_posted` / `posted_low_confidence` / `not_posted`. Matching a posted Google review back to a request comes with the review-sync work, which will also decide whether to sweep negative / non-rating requests too (see the "track click-through" / attribution discussion).
-- **No dashboard wiring** — the dashboard's three "Overview" stat cards are still placeholders (`0`); a fuller requests table (filtering, the engagement timeline) is deferred.
-- **No re-send / cancel** of a request; no per-request detail page.
+- **No dashboard wiring** — the dashboard's three "Overview" stat cards are still placeholders (`0`); a funnel/analytics view is deferred. The per-request engagement timeline now ships as a drawer (above); list-level filtering/sorting/pagination is still deferred.
+- **No re-send / cancel** of a request.

@@ -25,6 +25,7 @@ import type {
   RequestCreatedDto,
   RequestSummaryDto,
 } from './dto/review-request.response';
+import type { RequestTimeline } from '@rater/types';
 import { ReviewRequestsService } from './review-requests.service';
 
 @Controller('review-requests')
@@ -58,6 +59,15 @@ export class ReviewRequestsController {
     @Query('locationId') locationId: string,
   ): Promise<RequestSummaryDto[]> {
     return this.service.list(user, locationId);
+  }
+
+  @Get(':id/timeline')
+  @UseGuards(AuthGuard)
+  timeline(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<RequestTimeline> {
+    return this.service.getTimeline(user, id);
   }
 
   // --- public (token-based, no auth) ---

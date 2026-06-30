@@ -20,7 +20,8 @@ import type {
   RequestCreatedDto,
   RequestSummaryDto,
 } from './dto/review-request.response';
-import { toRequestSummary } from './review-requests.mapper';
+import type { RequestTimeline } from '@rater/types';
+import { toRequestSummary, toRequestTimeline } from './review-requests.mapper';
 import { ReviewRequestsRepository } from './review-requests.repository';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001';
@@ -184,6 +185,13 @@ export class ReviewRequestsService {
     await this.assertMember(user, locationId);
     const rows = await this.repo.listByLocation(locationId);
     return rows.map((r) => toRequestSummary(r, this.rateUrl(r.publicToken)));
+  }
+
+  async getTimeline(user: AuthUser, id: string): Promise<RequestTimeline> {
+    const row = await this.repo.findForTimeline(id);
+    if (!row) throw new NotFoundException('Request not found.');
+    await this.assertMember(user, row.locationId);
+    return toRequestTimeline(row);
   }
 
   // --- public (token-based, no auth) ---

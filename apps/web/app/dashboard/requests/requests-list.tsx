@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import type { RequestSummary } from '@rater/types';
+import { useState, type ReactNode } from 'react';
+import type { DeliveryStatus, EngagementStatus, RequestSummary } from '@rater/types';
 import { useRequests } from '@/hooks/use-requests';
 import { useCampaigns } from '@/hooks/use-campaigns';
 import { EmptyState } from '@/components/empty-state';
@@ -10,6 +10,7 @@ import { useDashboard } from '../dashboard-context';
 import { RequestReviewButton } from './request-review-button';
 import { RequestReviewsCsvButton } from './request-reviews-csv-button';
 import { CopyLinkButton } from './copy-link-button';
+import { RequestTimelineDrawer } from './request-timeline-drawer';
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -19,13 +20,37 @@ const dateFmt = new Intl.DateTimeFormat('en-US', {
 
 const EMERALD = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
 const AMBER = 'bg-amber-50 text-amber-700 border border-amber-200';
+const ROSE = 'bg-rose-50 text-rose-700 border border-rose-200';
 const NEUTRAL = 'border border-border text-faint';
+
+const DELIVERY_TONE: Record<DeliveryStatus, string> = {
+  pending: NEUTRAL,
+  sent: NEUTRAL,
+  delivered: EMERALD,
+  bounced: ROSE,
+  complained: ROSE,
+  failed: ROSE,
+};
+
+const ENGAGED: EngagementStatus[] = ['opened', 'link_clicked', 'landing_viewed'];
 
 function Tag({ cls, children }: { cls: string; children: ReactNode }) {
   return (
     <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
       {children}
     </span>
+  );
+}
+
+function StatusTags({ r }: { r: RequestSummary }) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] text-faint">{r.campaignName}</span>
+      <Tag cls={DELIVERY_TONE[r.deliveryStatus]}>{r.deliveryStatus.replace(/_/g, ' ')}</Tag>
+      {ENGAGED.includes(r.engagementStatus) && (
+        <Tag cls={EMERALD}>{r.engagementStatus.replace(/_/g, ' ')}</Tag>
+      )}
+    </div>
   );
 }
 
@@ -71,6 +96,7 @@ export function RequestsList() {
   const locationId = location?.id ?? '';
   const { data: requests, isPending, error } = useRequests(locationId);
   const { data: campaigns = [] } = useCampaigns(locationId);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   if (!location) return null;
 
@@ -112,7 +138,16 @@ export function RequestsList() {
             {requests.map((r) => (
               <div
                 key={r.id}
-                className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-6"
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenId(r.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setOpenId(r.id);
+                  }
+                }}
+                className="flex cursor-pointer flex-col gap-2 px-5 py-3.5 text-left transition-colors hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none sm:flex-row sm:items-center sm:gap-6"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-medium text-ink">
@@ -121,6 +156,7 @@ export function RequestsList() {
                   {r.customer.name && (
                     <p className="truncate font-mono text-sm text-muted">{r.customer.email}</p>
                   )}
+                  <StatusTags r={r} />
                   {r.feedback && (
                     <p
                       title={r.feedback}
@@ -136,7 +172,7 @@ export function RequestsList() {
                 <div className="hidden text-xs text-faint sm:block sm:w-28 sm:shrink-0">
                   {dateFmt.format(new Date(r.createdAt))}
                 </div>
-                <div className="sm:shrink-0">
+                <div className="sm:shrink-0" onClick={(e) => e.stopPropagation()}>
                   <CopyLinkButton rateUrl={r.rateUrl} />
                 </div>
               </div>
@@ -144,6 +180,8 @@ export function RequestsList() {
           </div>
         )}
       </div>
+
+      <RequestTimelineDrawer requestId={openId} onClose={() => setOpenId(null)} />
     </main>
   );
 }

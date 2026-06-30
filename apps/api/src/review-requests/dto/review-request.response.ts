@@ -15,6 +15,7 @@ export class ImportRequestsResultDto {
 export class RequestSummaryDto {
   id!: string;
   customer!: { name: string | null; email: string };
+  campaignName!: string;
   deliveryStatus!: string;
   engagementStatus!: string;
   ratingStatus!: string;

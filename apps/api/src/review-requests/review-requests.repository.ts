@@ -10,8 +10,26 @@ import { PrismaService } from '../prisma/prisma.service';
 export type RequestWithCustomer = Prisma.ReviewRequestGetPayload<{
   include: {
     customer: { select: { name: true; email: true } };
+    campaign: { select: { name: true } };
     ratingSubmission: { select: { rating: true } };
     feedbackSubmission: { select: { text: true } };
+  };
+}>;
+
+export type RequestTimelineRow = Prisma.ReviewRequestGetPayload<{
+  include: {
+    customer: { select: { name: true; email: true } };
+    campaign: { select: { name: true } };
+    ratingSubmission: { select: { rating: true } };
+    feedbackSubmission: { select: { text: true } };
+    events: { select: { eventType: true; payload: true; occurredAt: true } };
+    stepExecutions: {
+      select: {
+        status: true;
+        scheduledFor: true;
+        campaignStep: { select: { stepType: true } };
+      };
+    };
   };
 }>;
 
@@ -100,8 +118,35 @@ export class ReviewRequestsRepository {
       orderBy: { createdAt: 'desc' },
       include: {
         customer: { select: { name: true, email: true } },
+        campaign: { select: { name: true } },
         ratingSubmission: { select: { rating: true } },
         feedbackSubmission: { select: { text: true } },
+      },
+    });
+  }
+
+  /** Full activity data for one request — the Event log (the per-action stream)
+   *  plus the joins the events can't carry (feedback text, scheduled/skipped
+   *  step executions). Scoped to the request id; the service checks membership. */
+  findForTimeline(id: string): Promise<RequestTimelineRow | null> {
+    return this.prisma.reviewRequest.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        customer: { select: { name: true, email: true } },
+        campaign: { select: { name: true } },
+        ratingSubmission: { select: { rating: true } },
+        feedbackSubmission: { select: { text: true } },
+        events: {
+          select: { eventType: true, payload: true, occurredAt: true },
+          orderBy: { occurredAt: 'asc' },
+        },
+        stepExecutions: {
+          select: {
+            status: true,
+            scheduledFor: true,
+            campaignStep: { select: { stepType: true } },
+          },
+        },
       },
     });
   }

@@ -80,6 +80,7 @@ export interface GoogleReviewsPage {
 export interface RequestSummary {
   id: string;
   customer: { name: string | null; email: string };
+  campaignName: string;
   deliveryStatus: DeliveryStatus;
   engagementStatus: EngagementStatus;
   ratingStatus: RatingStatus;
@@ -91,6 +92,45 @@ export interface RequestSummary {
   feedback: string | null;
   createdAt: string;
   rateUrl: string;
+}
+
+/** One row in a review request's activity log. `kind` drives the icon; `event`
+ *  is the open-ended fallback so a new Event.eventType still renders without a
+ *  client change. */
+export type TimelineKind =
+  | 'created'
+  | 'scheduled'
+  | 'sent'
+  | 'delivered'
+  | 'opened'
+  | 'bounced'
+  | 'complained'
+  | 'failed'
+  | 'skipped'
+  | 'rated'
+  | 'feedback'
+  | 'redirected'
+  | 'event';
+
+export interface TimelineEntry {
+  at: string;
+  kind: TimelineKind;
+  label: string;
+  /** Secondary line — bounce reason, send error, feedback text, routing, etc. */
+  detail: string | null;
+}
+
+export interface RequestTimeline {
+  id: string;
+  customer: { name: string | null; email: string };
+  campaignName: string;
+  deliveryStatus: DeliveryStatus;
+  engagementStatus: EngagementStatus;
+  ratingStatus: RatingStatus;
+  googleAttributionStatus: GoogleAttributionStatus;
+  rating: number | null;
+  createdAt: string;
+  entries: TimelineEntry[];
 }
 
 export interface ReviewRequestCreated {
