@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@rater/db';
+import type { CampaignDelayAnchor, CampaignStepType } from '@rater/types';
 import { PrismaService } from '../prisma/prisma.service';
 
 const detailInclude = {
@@ -20,7 +21,7 @@ export type CampaignWithCounts = Prisma.CampaignGetPayload<{
 
 /** The seed step every freshly-created campaign starts with. Mirrors the
  *  placeholder template text — there's no `{{...}}` render engine yet. */
-const SEED_INITIAL_STEP = {
+const SEED_INITIAL_STEP: Prisma.CampaignStepCreateWithoutCampaignInput = {
   stepOrder: 1,
   stepType: 'initial',
   delayDays: 0,
@@ -101,9 +102,9 @@ export class CampaignsRepository {
     data: {
       name?: string;
       steps?: {
-        stepType: string;
+        stepType: CampaignStepType;
         delayDays: number;
-        delayAnchor: string;
+        delayAnchor: CampaignDelayAnchor;
         requiredState: Record<string, string>;
         subjectTemplate: string;
         bodyTemplate: string;

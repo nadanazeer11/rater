@@ -2,9 +2,9 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { apiPost } from '@/lib/api';
-import type { InvitationCreated } from '@rater/types';
+import type { InvitationCreated, Role } from '@rater/types';
 
-type Input = { locationId: string; email: string; role: 'member' | 'admin' };
+type Input = { locationId: string; email: string; role: Role };
 
 export function useInviteTeammate() {
   return useMutation({

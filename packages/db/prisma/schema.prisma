@@ -8,6 +8,126 @@ datasource db {
 }
 
 // =====================================================================
+// Enums
+// =====================================================================
+// Member names == the legacy string values, so the Postgres enum labels
+// match existing rows 1:1 (no backfill). Note: Event.eventType stays a
+// String on purpose — the append-only log must accept new event types
+// without a migration.
+
+enum Role {
+  admin
+  member
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum EmailStatus {
+  valid
+  invalid
+  unsubscribed
+  complained
+}
+
+enum ImportSource {
+  csv
+  manual
+  api
+}
+
+enum StepType {
+  initial
+  follow_up_no_rating
+  follow_up_no_google_review
+}
+
+enum DelayAnchor {
+  request_created
+  previous_step
+  rating_submitted
+}
+
+enum DeliveryStatus {
+  pending
+  sent
+  delivered
+  bounced
+  complained
+  failed
+}
+
+enum EngagementStatus {
+  not_opened
+  opened
+  link_clicked
+  landing_viewed
+}
+
+enum RatingStatus {
+  not_rated
+  rated_positive
+  rated_negative
+  feedback_submitted
+}
+
+enum GoogleAttributionStatus {
+  not_applicable
+  pending_check
+  confirmed_posted
+  posted_low_confidence
+  not_posted
+}
+
+enum StepExecutionStatus {
+  scheduled
+  executed
+  skipped
+  failed
+}
+
+enum RoutedTo {
+  google
+  feedback
+}
+
+enum AttributionConfidence {
+  high
+  medium
+  low
+}
+
+enum SyncStatus {
+  running
+  completed
+  failed
+}
+
+enum SyncType {
+  baseline
+  incremental
+  full
+  targeted
+}
+
+enum SyncTrigger {
+  cron
+  on_demand
+  request_completed
+}
+
+enum NotificationChannel {
+  email
+  in_app
+  whatsapp
+  slack
+}
+
+// =====================================================================
 // Tenancy + auth
 // =====================================================================
 
@@ -73,10 +193,10 @@ model LocationUser {
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   // References Supabase auth.users.id (UUID). No FK because auth lives in a different schema.
-  authUserId String  @db.Uuid @map("auth_user_id")
+  authUserId String  @map("auth_user_id") @db.Uuid
   email      String
   name       String?
-  role       String // 'admin' | 'member' — string for extensibility
+  role       Role
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -99,12 +219,12 @@ model Invitation {
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   email String
-  role  String // 'admin' | 'member'
+  role  Role
   token String @unique
 
-  status     String    @default("pending") // 'pending' | 'accepted' | 'revoked' | 'expired'
-  expiresAt  DateTime  @map("expires_at")
-  acceptedAt DateTime? @map("accepted_at")
+  status     InvitationStatus @default(pending)
+  expiresAt  DateTime         @map("expires_at")
+  acceptedAt DateTime?        @map("accepted_at")
 
   invitedByUserId String?       @map("invited_by_user_id")
   invitedBy       LocationUser? @relation("Inviter", fields: [invitedByUserId], references: [id])
@@ -131,13 +251,13 @@ model Customer {
   phone String?
 
   // Dedup signals
-  hasAttributedGoogleReview Boolean   @default(false) @map("has_attributed_google_review")
-  lastReviewRequestSentAt   DateTime? @map("last_review_request_sent_at")
-  emailStatus               String    @default("valid") @map("email_status") // 'valid' | 'invalid' | 'unsubscribed' | 'complained'
+  hasAttributedGoogleReview Boolean     @default(false) @map("has_attributed_google_review")
+  lastReviewRequestSentAt   DateTime?   @map("last_review_request_sent_at")
+  emailStatus               EmailStatus @default(valid) @map("email_status")
 
   // Import metadata
-  importSource String   @default("manual") @map("import_source") // 'csv' | 'manual' | 'api'
-  importedAt   DateTime @default(now()) @map("imported_at")
+  importSource ImportSource @default(manual) @map("import_source")
+  importedAt   DateTime     @default(now()) @map("imported_at")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -178,13 +298,13 @@ model CampaignStep {
   campaignId String   @map("campaign_id")
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  stepOrder Int    @map("step_order")
-  stepType  String @map("step_type") // 'initial' | 'follow_up_no_rating' | 'follow_up_no_google_review' | 'feedback_thank_you' | 'google_review_thank_you' | ...
+  stepOrder Int      @map("step_order")
+  stepType  StepType @map("step_type")
 
   // Trigger predicate
-  delayDays     Int    @map("delay_days")
-  delayAnchor   String @map("delay_anchor") // 'request_created' | 'previous_step' | 'rating_submitted'
-  requiredState Json   @map("required_state") // e.g. { ratingStatus: 'not_rated', deliveryStatus: 'delivered' }
+  delayDays     Int         @map("delay_days")
+  delayAnchor   DelayAnchor @map("delay_anchor")
+  requiredState Json        @map("required_state") // e.g. { ratingStatus: 'not_rated', deliveryStatus: 'delivered' }
 
   // Email template
   subjectTemplate String @map("subject_template")
@@ -221,15 +341,11 @@ model ReviewRequest {
   // Public-facing token used in landing page URLs
   publicToken String @unique @default(cuid()) @map("public_token")
 
-  // Four orthogonal status tracks (string, not enum, for extensibility)
-  deliveryStatus          String @default("pending") @map("delivery_status")
-  // 'pending' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed'
-  engagementStatus        String @default("not_opened") @map("engagement_status")
-  // 'not_opened' | 'opened' | 'link_clicked' | 'landing_viewed'
-  ratingStatus            String @default("not_rated") @map("rating_status")
-  // 'not_rated' | 'rated_positive' | 'rated_negative' | 'feedback_submitted'
-  googleAttributionStatus String @default("not_applicable") @map("google_attribution_status")
-  // 'not_applicable' | 'pending_check' | 'confirmed_posted' | 'posted_low_confidence' | 'not_posted'
+  // Four orthogonal status tracks
+  deliveryStatus          DeliveryStatus          @default(pending) @map("delivery_status")
+  engagementStatus        EngagementStatus        @default(not_opened) @map("engagement_status")
+  ratingStatus            RatingStatus            @default(not_rated) @map("rating_status")
+  googleAttributionStatus GoogleAttributionStatus @default(not_applicable) @map("google_attribution_status")
 
   // Set when the customer actually clicks through to Google after a positive
   // rating (or the "post on Google" link on the already-rated screen). Null =
@@ -262,9 +378,9 @@ model ReviewRequestStepExecution {
   campaignStepId String       @map("campaign_step_id")
   campaignStep   CampaignStep @relation(fields: [campaignStepId], references: [id])
 
-  scheduledFor DateTime  @map("scheduled_for")
-  executedAt   DateTime? @map("executed_at")
-  status       String    @default("scheduled") // 'scheduled' | 'executed' | 'skipped' | 'failed'
+  scheduledFor DateTime            @map("scheduled_for")
+  executedAt   DateTime?           @map("executed_at")
+  status       StepExecutionStatus @default(scheduled)
 
   postmarkMessageId String? @unique @map("postmark_message_id")
   errorMessage      String? @map("error_message") @db.Text
@@ -284,7 +400,7 @@ model RatingSubmission {
   reviewRequest   ReviewRequest @relation(fields: [reviewRequestId], references: [id], onDelete: Cascade)
 
   rating      Int // 1-5
-  routedTo    String   @map("routed_to") // 'google' | 'feedback'
+  routedTo    RoutedTo @map("routed_to")
   submittedAt DateTime @default(now()) @map("submitted_at")
 
   // Anti-fraud / context
@@ -358,11 +474,11 @@ model GoogleReview {
   locationId String   @map("location_id")
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  externalId        String  @map("external_id") // Google review_id, fallback content hash
-  reviewerName      String  @map("reviewer_name")
-  reviewerAvatarUrl String? @map("reviewer_avatar_url")
+  externalId        String   @map("external_id") // Google review_id, fallback content hash
+  reviewerName      String   @map("reviewer_name")
+  reviewerAvatarUrl String?  @map("reviewer_avatar_url")
   rating            Int
-  text              String? @db.Text
+  text              String?  @db.Text
   language          String?
   postedAt          DateTime @map("posted_at")
 
@@ -371,10 +487,10 @@ model GoogleReview {
   removedAt         DateTime?  @map("removed_at")
 
   // Attribution
-  attributedReviewRequestId    String?        @unique @map("attributed_review_request_id")
-  attributedReviewRequest      ReviewRequest? @relation("AttributedRequest", fields: [attributedReviewRequestId], references: [id])
-  attributionConfidence        String?        @map("attribution_confidence") // 'high' | 'medium' | 'low'
-  attributionConfirmedManually Boolean        @default(false) @map("attribution_confirmed_manually")
+  attributedReviewRequestId    String?                @unique @map("attributed_review_request_id")
+  attributedReviewRequest      ReviewRequest?         @relation("AttributedRequest", fields: [attributedReviewRequestId], references: [id])
+  attributionConfidence        AttributionConfidence? @map("attribution_confidence")
+  attributionConfirmedManually Boolean                @default(false) @map("attribution_confirmed_manually")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -391,12 +507,12 @@ model ReviewSync {
   locationId String   @map("location_id")
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  startedAt   DateTime  @default(now()) @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  status      String    @default("running") // 'running' | 'completed' | 'failed'
+  startedAt   DateTime   @default(now()) @map("started_at")
+  completedAt DateTime?  @map("completed_at")
+  status      SyncStatus @default(running)
 
-  syncType    String @map("sync_type") // 'baseline' | 'incremental' | 'full' | 'targeted'
-  triggeredBy String @map("triggered_by") // 'cron' | 'on_demand' | 'request_completed'
+  syncType    SyncType    @map("sync_type")
+  triggeredBy SyncTrigger @map("triggered_by")
 
   reviewsAdded   Int     @default(0) @map("reviews_added")
   reviewsRemoved Int     @default(0) @map("reviews_removed")
@@ -418,8 +534,8 @@ model NotificationRule {
   locationId String   @map("location_id")
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  eventType String @map("event_type") // matches Event.eventType
-  channel   String // 'email' | 'in_app' | 'whatsapp' | 'slack'
+  eventType String              @map("event_type") // matches Event.eventType
+  channel   NotificationChannel
 
   // Recipients spec — flexible JSON:
   //   { type: 'all_location_users' }

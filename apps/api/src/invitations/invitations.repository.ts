@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@rater/db';
+import type { InvitationStatus } from '@rater/types';
 import { PrismaService } from '../prisma/prisma.service';
 
 type Tx = Prisma.TransactionClient;
@@ -76,7 +77,7 @@ export class InvitationsRepository {
     return this.prisma.invitation.findUnique({ where: { token } });
   }
 
-  markStatus(id: string, status: string, acceptedAt?: Date) {
+  markStatus(id: string, status: InvitationStatus, acceptedAt?: Date) {
     return this.prisma.invitation.update({
       where: { id },
       data: { status, ...(acceptedAt ? { acceptedAt } : {}) },

@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
@@ -13,23 +14,26 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  CAMPAIGN_DELAY_ANCHORS,
+  CAMPAIGN_STEP_TYPES,
+  type CampaignDelayAnchor,
+  type CampaignStepType,
+} from '@rater/types';
 
 /** One step as the editor submits it. `stepOrder` is the array index (+1) — not
- *  sent. Vocab (`stepType`, `delayAnchor`) and the "exactly one initial, first"
- *  rule are enforced in the service. */
+ *  sent. The "exactly one initial, first" rule is enforced in the service. */
 export class CampaignStepDto {
-  @IsString()
-  @MaxLength(64)
-  stepType!: string;
+  @IsIn(CAMPAIGN_STEP_TYPES)
+  stepType!: CampaignStepType;
 
   @IsInt()
   @Min(0)
   @Max(365)
   delayDays!: number;
 
-  @IsString()
-  @MaxLength(64)
-  delayAnchor!: string;
+  @IsIn(CAMPAIGN_DELAY_ANCHORS)
+  delayAnchor!: CampaignDelayAnchor;
 
   @IsObject()
   requiredState!: Record<string, string>;

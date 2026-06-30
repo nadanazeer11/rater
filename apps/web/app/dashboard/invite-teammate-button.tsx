@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import type { Role } from '@rater/types';
 import { useInviteTeammate } from '@/hooks/use-invite-teammate';
 import { useClipboard } from '@/hooks/use-clipboard';
 
@@ -23,13 +24,13 @@ type Props = {
 
 type Stage =
   | { kind: 'form' }
-  | { kind: 'sent'; email: string; shareUrl: string; role: string };
+  | { kind: 'sent'; email: string; shareUrl: string; role: Role };
 
 export function InviteTeammateButton({ locationId, locationName }: Props) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: 'form' });
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'member' | 'admin'>('member');
+  const [role, setRole] = useState<Role>('member');
   const invite = useInviteTeammate();
   const { copied, copy } = useClipboard();
   const submitting = invite.isPending;
@@ -98,7 +99,7 @@ export function InviteTeammateButton({ locationId, locationName }: Props) {
                 select
                 label="Role"
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'member' | 'admin')}
+                onChange={(e) => setRole(e.target.value as Role)}
                 fullWidth
                 disabled={submitting}
               >

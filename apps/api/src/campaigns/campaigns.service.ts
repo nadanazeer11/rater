@@ -15,25 +15,10 @@ import type { CampaignStepDto, UpdateCampaignDto } from './dto/update-campaign.d
 import { toCampaignDetail, toCampaignSummary } from './campaigns.mapper';
 import { CampaignsRepository } from './campaigns.repository';
 
-const STEP_TYPES = new Set([
-  'initial',
-  'follow_up_no_rating',
-  'follow_up_no_google_review',
-]);
-const DELAY_ANCHORS = new Set([
-  'request_created',
-  'rating_submitted',
-  'previous_step',
-]);
-
 function validateSteps(steps: CampaignStepDto[]): void {
+  // stepType / delayAnchor vocab is validated by @IsIn on the DTO; here we
+  // enforce the structural rules the enum can't express.
   steps.forEach((s, i) => {
-    if (!STEP_TYPES.has(s.stepType)) {
-      throw new BadRequestException(`Unknown step type "${s.stepType}".`);
-    }
-    if (!DELAY_ANCHORS.has(s.delayAnchor)) {
-      throw new BadRequestException(`Unknown delay anchor "${s.delayAnchor}".`);
-    }
     const isInitial = s.stepType === 'initial';
     if (i === 0 && !isInitial) {
       throw new BadRequestException('The first step must be the initial email.');

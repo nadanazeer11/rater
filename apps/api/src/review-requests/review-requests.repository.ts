@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@rater/db';
+import type {
+  GoogleAttributionStatus,
+  RatingStatus,
+  RoutedTo,
+} from '@rater/types';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type RequestWithCustomer = Prisma.ReviewRequestGetPayload<{
@@ -150,9 +155,9 @@ export class ReviewRequestsRepository {
     reviewRequestId: string,
     data: {
       rating: number;
-      routedTo: string;
-      ratingStatus: string;
-      googleAttributionStatus: string;
+      routedTo: RoutedTo;
+      ratingStatus: RatingStatus;
+      googleAttributionStatus: GoogleAttributionStatus;
       ipAddress: string | null;
       userAgent: string | null;
     },

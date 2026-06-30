@@ -4,6 +4,21 @@
  * are generic over these; the api's response DTOs mirror them.
  */
 
+import type {
+  AttributionConfidence,
+  CampaignDelayAnchor,
+  CampaignStepType,
+  DeliveryStatus,
+  EmailStatus,
+  EngagementStatus,
+  GoogleAttributionStatus,
+  ImportSource,
+  InvitationStatus,
+  RatingStatus,
+  Role,
+  RoutedTo,
+} from './enums';
+
 export interface BusinessSummary {
   id: string;
   name: string;
@@ -12,7 +27,7 @@ export interface BusinessSummary {
 export interface LocationSummary {
   id: string;
   name: string;
-  role: string;
+  role: Role;
   business: BusinessSummary;
   googleRating: number | null;
   googleReviewsCount: number | null;
@@ -33,8 +48,8 @@ export interface CustomerSummary {
   email: string;
   name: string | null;
   phone: string | null;
-  emailStatus: string;
-  importSource: string;
+  emailStatus: EmailStatus;
+  importSource: ImportSource;
   importedAt: string;
   createdAt: string;
 }
@@ -49,7 +64,7 @@ export interface GoogleReviewSummary {
   language: string | null;
   postedAt: string;
   attributedReviewRequestId: string | null;
-  attributionConfidence: string | null;
+  attributionConfidence: AttributionConfidence | null;
   createdAt: string;
 }
 
@@ -65,10 +80,10 @@ export interface GoogleReviewsPage {
 export interface RequestSummary {
   id: string;
   customer: { name: string | null; email: string };
-  deliveryStatus: string;
-  engagementStatus: string;
-  ratingStatus: string;
-  googleAttributionStatus: string;
+  deliveryStatus: DeliveryStatus;
+  engagementStatus: EngagementStatus;
+  ratingStatus: RatingStatus;
+  googleAttributionStatus: GoogleAttributionStatus;
   redirectedToGoogle: boolean;
   /** The 1–5 stars they gave, or null if not rated yet. */
   rating: number | null;
@@ -83,15 +98,6 @@ export interface ReviewRequestCreated {
   publicToken: string;
   rateUrl: string;
 }
-
-export type CampaignStepType =
-  | 'initial'
-  | 'follow_up_no_rating'
-  | 'follow_up_no_google_review';
-export type CampaignDelayAnchor =
-  | 'request_created'
-  | 'rating_submitted'
-  | 'previous_step';
 
 export interface CampaignStepDetail {
   id: string;
@@ -140,7 +146,7 @@ export interface PublicReviewRequest {
 }
 
 export interface RateResult {
-  routedTo: 'google' | 'feedback';
+  routedTo: RoutedTo;
   googleReviewUrl: string | null;
 }
 
@@ -161,11 +167,9 @@ export interface OnboardingResult {
   locationIds: string[];
 }
 
-export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
-
 export interface InvitationDetails {
   email: string;
-  role: string;
+  role: Role;
   status: InvitationStatus;
   expiresAt: string;
   location: { id: string; name: string; businessName: string };
@@ -175,12 +179,12 @@ export interface InvitationDetails {
 export interface InvitationCreated {
   id: string;
   email: string;
-  role: string;
+  role: Role;
   expiresAt: string;
   shareUrl: string;
 }
 
 export interface InvitationAccepted {
   locationId: string;
-  role: string;
+  role: Role;
 }

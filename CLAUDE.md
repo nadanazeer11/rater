@@ -87,7 +87,7 @@ pnpm --filter @rater/worker dev  # worker only
 
 ## Conventions
 
-- **Status fields are strings, not Prisma enums** — extensibility over rigidity. `ReviewRequest` has four orthogonal string-typed status tracks: `deliveryStatus`, `engagementStatus`, `ratingStatus`, `googleAttributionStatus`. Validate at the app layer.
+- **Status/category fields are Prisma enums.** `ReviewRequest` keeps its four orthogonal status tracks (`deliveryStatus`, `engagementStatus`, `ratingStatus`, `googleAttributionStatus`), now enum-typed. Vocabularies are a single cross-app source in `packages/types/src/enums.ts` (mirrors the Prisma enums; web/api/worker import from `@rater/types`, never re-declare). DTOs validate via `@IsIn(...)`. Adding a value is now a migration. **Exception:** `Event.eventType` stays a `String` (append-only log accepts new types without a migration).
 - **Predicates and config use `Json` columns** (`CampaignStep.requiredState`, `NotificationRule.recipients`, `Event.payload`, `GoogleReviewSnapshot.distribution`)
 - **Soft delete only where audit matters:** `Customer`, `ReviewRequest`, `GoogleReview`, `Location`. NOT on Event log (immutable), Campaign/CampaignStep (cascade)
 - **Multi-tenancy is app-level**, not Postgres RLS. Every tenant-scoped row has `locationId` indexed; app guards filter
