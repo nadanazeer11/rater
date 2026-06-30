@@ -5,5 +5,6 @@ import { ScrapeWorker } from './scrape.worker';
 
 @Module({
   providers: [OutscraperService, ScrapeProcessor, ScrapeWorker],
+  exports: [OutscraperService],
 })
 export class ScrapeModule {}

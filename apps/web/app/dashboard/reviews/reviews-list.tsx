@@ -10,6 +10,7 @@ import { useGoogleReviews } from '@/hooks/use-google-reviews';
 import { Stars } from '@/components/star-rating';
 import { EmptyState } from '@/components/empty-state';
 import { useDashboard } from '../dashboard-context';
+import { PendingMatches } from './pending-matches';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -146,7 +147,11 @@ export function ReviewsList() {
         The latest reviews scraped from this location&apos;s Google listing.
       </p>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6">
+        <PendingMatches />
+      </div>
+
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <TextField
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}

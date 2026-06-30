@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AttributionModule } from './attribution/attribution.module';
 import { AuthModule } from './auth/auth.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CommonModule } from './common/common.module';
@@ -37,6 +38,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     GoogleReviewsModule,
     InvitationsModule,
     AnalyticsModule,
+    AttributionModule,
     WebhooksModule,
   ],
 })

@@ -1,6 +1,6 @@
 # Review requests
 
-> **Scope:** the `ReviewRequest` lifecycle and the public rating/feedback flow — creating requests (single + bulk CSV, which upsert the `Customer`), the `/rate/[publicToken]` page, routing a rating to Google vs a private feedback form. For the `Customer` model + repo see [docs/customers.md](customers.md). For campaigns (the `Campaign`/`CampaignStep` model + editor) see [docs/campaigns.md](campaigns.md). For the actual email send (Postmark queue, worker, webhook) see [docs/sending.md](sending.md). For the API layering see [docs/architecture.md](architecture.md). For Google-review *attribution* (matching a posted Google review back to a request) — not built yet; will get its own doc.
+> **Scope:** the `ReviewRequest` lifecycle and the public rating/feedback flow — creating requests (single + bulk CSV, which upsert the `Customer`), the `/rate/[publicToken]` page, routing a rating to Google vs a private feedback form. For the `Customer` model + repo see [docs/customers.md](customers.md). For campaigns (the `Campaign`/`CampaignStep` model + editor) see [docs/campaigns.md](campaigns.md). For the actual email send (Postmark queue, worker, webhook) see [docs/sending.md](sending.md). For the API layering see [docs/architecture.md](architecture.md). For Google-review *attribution* (matching a posted Google review back to a request) see [docs/attribution.md](attribution.md).
 > **Last updated:** 2026-05-25
 
 ## What it is
@@ -53,6 +53,6 @@ The product's core loop. You "request a review" from a past customer (one at a t
 ## Not done yet
 
 - **No follow-up step *execution*.** You can now configure follow-up steps in the campaign editor ([docs/campaigns.md](campaigns.md)), but nothing schedules/runs them — the initial-step `ReviewRequestStepExecution` row gets written by the mailer worker, but the scheduler that matches `CampaignStep.requiredState` and fires later steps is a separate PR. So in practice only the `initial` step fires today.
-- **No attribution sync** — `googleAttributionStatus` only ever advances to `pending_check` (on a positive rating that had a Google URL); nothing yet resolves it to `confirmed_posted` / `posted_low_confidence` / `not_posted`. Matching a posted Google review back to a request comes with the review-sync work, which will also decide whether to sweep negative / non-rating requests too (see the "track click-through" / attribution discussion).
+- **Attribution now resolves `pending_check`.** A positive rating with a Google URL sets `googleAttributionStatus = pending_check`; the attribution pipeline ([docs/attribution.md](attribution.md)) then advances it to `confirmed_posted` / `posted_low_confidence` / `not_posted` by matching posted Google reviews back to the request.
 - **No dashboard wiring** — the dashboard's three "Overview" stat cards are still placeholders (`0`); a funnel/analytics view is deferred. The per-request engagement timeline now ships as a drawer (above); list-level filtering/sorting/pagination is still deferred.
 - **No re-send / cancel** of a request.

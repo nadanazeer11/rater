@@ -11,7 +11,7 @@ A thin analytics layer over the existing `ReviewRequest` status tracks — no ne
 
 - **`GET /analytics/overview?locationId=`** → `OverviewStats`. `requestsSent` = requests whose `deliveryStatus` left `pending`; `awaitingResponse` = `ratingStatus = not_rated` AND `deliveryStatus in (sent, delivered)`; `newGoogleReviews` = `GoogleReview` rows `postedAt > Location.baselineScrapedAt` (or **0** — not "all" — when no baseline exists). `baselineCaptured` lets the card tell "0 new" apart from "no baseline yet".
 - **`GET /analytics/funnel?locationId=&from=&to=&campaignId=`** → `FunnelResponse`. Six counts over one shared `where` (location + `deletedAt: null` + optional `createdAt` range + optional `campaignId`), run in a single `$transaction`. The mapper turns counts into stages with `pctOfStart` (vs the first stage) and `pctOfPrev`.
-- **The "Posted on Google" stage is honest about being unbuilt.** Real attribution lands in a later phase; until then `googleAttributionStatus = confirmed_posted` is always 0, so that stage carries `pending: true` and the UI renders it greyed with a "pending attribution" note rather than implying a verified number. The honest terminal metric today is **"Clicked to Google"** (`redirectedToGoogleAt != null`).
+- **The "Posted on Google" stage is now real.** It counts `googleAttributionStatus = confirmed_posted`, which the attribution pipeline sets (auto for high-confidence matches, manual-confirm for the rest — see [docs/attribution.md](attribution.md)). The stage no longer carries `pending`. "Clicked to Google" (`redirectedToGoogleAt`) remains the upstream stage.
 - **Stages are "reached at least this far" measures**, computed independently off the four orthogonal tracks — they are *not* a strict state machine. A bounced request never reaches Delivered; a request can be Rated without having a recorded Open (e.g. the link was opened directly). The UI gives every non-zero stage a small min-width bar so downstream activity stays visible even when an upstream count is lower.
 
 ## Key files
@@ -30,5 +30,4 @@ A thin analytics layer over the existing `ReviewRequest` status tracks — no ne
 ## Not done yet
 
 - **Funnel filter UI.** The endpoint accepts `from` / `to` / `campaignId`, but the dashboard renders the all-time funnel with no date-range / campaign picker yet — wire the inputs when needed.
-- **"Posted on Google" is a placeholder stage** until the Google-review attribution pipeline lands (`googleAttributionStatus → confirmed_posted`).
 - **No time-series / trends** (requests-over-time, rating distribution over time) and **no per-campaign performance leaderboard** — both deferred.

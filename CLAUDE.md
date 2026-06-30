@@ -21,6 +21,7 @@ Index:
 - [docs/sending.md](docs/sending.md) — Sending: how the initial review-request email leaves the system (Postmark queue + worker + webhook), the `ReviewRequestStepExecution` row that anchors webhook updates, the `POSTMARK_SERVER_TOKEN` stub fallback. Follow-up step scheduling is not built yet.
 - [docs/analytics.md](docs/analytics.md) — Analytics: the read-only `analytics` API module (`/analytics/overview` + `/analytics/funnel`) powering the location overview cards + the Sent→…→Posted conversion funnel; all plain Prisma counts over the status tracks, no new schema. "Posted" is a placeholder stage until attribution lands.
 - [docs/scheduler.md](docs/scheduler.md) — Follow-up scheduler: the BullMQ evaluator that fires configured follow-up `CampaignStep`s (delayed jobs + 15-min reconciliation sweep), the due-time anchors, and the **send-time predicate re-check** (a follow-up is skipped, not sent, if its condition no longer holds). Default campaign now seeds 2 follow-ups.
+- [docs/attribution.md](docs/attribution.md) — Google-review attribution: matches a posted Google review back to the request that produced it (name + timing scorer — Google never exposes reviewer email), auto-confirms high confidence, queues the rest for a manual "It's them / Not them" review, and makes the funnel's "Posted" stage real. Incremental Outscraper sync + daily sweep.
 
 ## Stack
 

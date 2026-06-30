@@ -11,9 +11,9 @@ const STAGE_ORDER: { key: FunnelStageKey; label: string; pending: boolean }[] = 
   { key: 'opened', label: 'Opened', pending: false },
   { key: 'rated', label: 'Rated', pending: false },
   { key: 'routed', label: 'Clicked to Google', pending: false },
-  // Real attribution lands in a later phase; until then this count is 0 and the
-  // UI flags it as pending rather than implying a verified "posted" number.
-  { key: 'posted', label: 'Posted on Google', pending: true },
+  // Real now that the attribution pipeline sets googleAttributionStatus to
+  // confirmed_posted (auto for high-confidence, manual-confirm for the rest).
+  { key: 'posted', label: 'Posted on Google', pending: false },
 ];
 
 export function toFunnel(

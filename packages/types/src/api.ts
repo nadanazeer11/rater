@@ -105,6 +105,18 @@ export interface GoogleReviewSummary {
   createdAt: string;
 }
 
+/** A tentative (medium/low-confidence) Google-review → request match awaiting an
+ *  admin's confirm/reject in the manual-attribution queue. */
+export interface PendingAttributionMatch {
+  reviewId: string;
+  reviewerName: string;
+  rating: number;
+  text: string | null;
+  postedAt: string;
+  confidence: AttributionConfidence;
+  request: { id: string; customerName: string | null; customerEmail: string };
+}
+
 export type GoogleReviewsSort = 'newest' | 'oldest' | 'highest' | 'lowest';
 
 export interface GoogleReviewsPage {

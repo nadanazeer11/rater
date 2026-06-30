@@ -67,6 +67,14 @@ function eventToEntry(
       return make('complained', 'Marked as spam');
     case 'redirected_to_google':
       return make('redirected', 'Clicked through to Google');
+    case 'google_review_attributed':
+      return make('redirected', 'Matched to a Google review');
+    case 'google_review_match_pending':
+      return make('event', 'Possible Google review match', 'awaiting confirmation');
+    case 'google_review_match_rejected':
+      return make('event', 'Google review match rejected');
+    case 'google_review_not_found':
+      return make('event', 'No Google review found');
     case 'rating_submitted': {
       const rating = typeof payload.rating === 'number' ? payload.rating : null;
       const routedTo = str(payload.routedTo);
