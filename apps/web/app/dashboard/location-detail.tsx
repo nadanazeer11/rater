@@ -4,6 +4,7 @@ import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import type { LocationSummary } from '@rater/types';
 import { InviteTeammateButton } from './invite-teammate-button';
+import { LocationAnalytics } from './location-analytics';
 
 const FIVE_MINUTES = 5 * 60_000;
 
@@ -104,66 +105,7 @@ export function LocationDetail({ location }: { location: LocationSummary }) {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div className="space-y-0.5">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
-            This location
-          </p>
-          <h2 className="text-xl font-semibold tracking-tight text-ink">
-            Overview
-          </h2>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard
-            accent="bg-accent"
-            label="Review requests sent"
-            value="0"
-            hint="Start a campaign to send your first batch"
-          />
-          <StatCard
-            accent="bg-amber-500"
-            label="Awaiting response"
-            value="0"
-            hint="Emailed customers who haven't rated yet"
-          />
-          <StatCard
-            accent="bg-emerald-500"
-            label="New Google reviews"
-            value="0"
-            hint={
-              location.baselineScrapedAt
-                ? 'Since baseline was captured'
-                : 'Baseline not yet captured'
-            }
-          />
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function StatCard({
-  accent,
-  label,
-  value,
-  hint,
-}: {
-  accent: string;
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface transition-shadow hover:shadow-[0_8px_24px_-8px_rgba(24,24,27,0.08)]">
-      <div className={`h-[3px] ${accent}`} />
-      <div className="space-y-2 p-5">
-        <p className="text-xs font-medium text-muted">{label}</p>
-        <p className="font-mono text-3xl font-semibold tabular-nums leading-none text-ink">
-          {value}
-        </p>
-        <p className="text-xs leading-relaxed text-faint">{hint}</p>
-      </div>
+      <LocationAnalytics locationId={location.id} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ Index:
 - [docs/campaigns.md](docs/campaigns.md) — Campaigns: the `Campaign`/`CampaignStep` model, the `/dashboard/campaigns` editor (name + email steps + follow-up triggers, live `{{token}}` preview), "newest active = default", the campaign picker on review requests. Nothing sends/schedules yet — editor only.
 - [docs/google-reviews.md](docs/google-reviews.md) — Google reviews: the read-only `/dashboard/reviews` list backed by the `GoogleReview` table the scrape worker populates. No mutations — purely a window onto the scrape output.
 - [docs/sending.md](docs/sending.md) — Sending: how the initial review-request email leaves the system (Postmark queue + worker + webhook), the `ReviewRequestStepExecution` row that anchors webhook updates, the `POSTMARK_SERVER_TOKEN` stub fallback. Follow-up step scheduling is not built yet.
+- [docs/analytics.md](docs/analytics.md) — Analytics: the read-only `analytics` API module (`/analytics/overview` + `/analytics/funnel`) powering the location overview cards + the Sent→…→Posted conversion funnel; all plain Prisma counts over the status tracks, no new schema. "Posted" is a placeholder stage until attribution lands.
 
 ## Stack
 

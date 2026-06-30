@@ -24,6 +24,42 @@ export interface BusinessSummary {
   name: string;
 }
 
+/** The three location-overview cards. `baselineCaptured` lets the UI tell
+ *  "0 new reviews" apart from "baseline not captured yet". */
+export interface OverviewStats {
+  requestsSent: number;
+  awaitingResponse: number;
+  newGoogleReviews: number;
+  baselineCaptured: boolean;
+}
+
+export type FunnelStageKey =
+  | 'sent'
+  | 'delivered'
+  | 'opened'
+  | 'rated'
+  | 'routed'
+  | 'posted';
+
+export interface FunnelStage {
+  key: FunnelStageKey;
+  label: string;
+  count: number;
+  /** 0–100, relative to the first stage (`sent`). */
+  pctOfStart: number;
+  /** 0–100, relative to the previous stage. */
+  pctOfPrev: number;
+  /** True for `posted` until Google-review attribution lands — the count is
+   *  not yet trustworthy, so the UI shows it as pending. */
+  pending: boolean;
+}
+
+export interface FunnelResponse {
+  stages: FunnelStage[];
+  from: string | null;
+  to: string | null;
+}
+
 export interface LocationSummary {
   id: string;
   name: string;
