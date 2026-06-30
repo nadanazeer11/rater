@@ -8,7 +8,7 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 
 | Service | Why | When | Notes |
 |---|---|---|---|
-| **Postmark** account | Sending review-request emails to customers | Before first campaign send | One server per customer eventually (Message Streams). Domain auth (SPF/DKIM/DMARC) via per-customer DNS wizard. |
+| **Postmark** account | Sending review-request emails to customers | ✅ active (in test mode, 100 emails/day to verified domains) — exit test mode by submitting the approval request when ready to ship | One server per customer eventually (Message Streams). Domain auth (SPF/DKIM/DMARC) via per-customer DNS wizard. Webhook URL (Delivery + Bounce + Open + SpamComplaint) needs Basic Auth matching `POSTMARK_WEBHOOK_USERNAME` / `POSTMARK_WEBHOOK_PASSWORD`. |
 | **Postmark** as Supabase Auth SMTP | Magic-link delivery for sign-in/sign-up | Before inviting anyone outside yourself to test | Bypasses Supabase's dev SMTP rate limit (~3-4/hour). Configure in Supabase dashboard → Authentication → SMTP Settings. |
 | **Outscraper** account + API key | Pulling Google reviews for baseline + attribution + dedup | Before location onboarding feature | `OUTSCRAPER_API_KEY` in `.env`. ~$1–3/location/month. |
 | **Google OAuth client** in Google Cloud Console | "Sign in with Google" button | When you're ready to enable Google sign-in | Then enable Google provider in Supabase → Authentication → Providers. |
@@ -62,7 +62,9 @@ Things outside the codebase that need attention. Not exhaustive — kept current
 - **Test infrastructure.** No tests yet. NestJS uses Jest by default; React side could use Vitest + Testing Library. Add when first non-trivial business logic lands.
 - **Replace `cuid()` IDs with `cuid2()` or UUID.** `cuid()` is deprecated upstream. Tradeoffs: cuid2 is shorter and unguessable, UUID v7 is sortable. Schema-wide change — do it before there's real data.
 - **Branded magic-link email** (Supabase Auth → Email Templates). Replace generic copy with rater-branded subject + body matching the dashboard look. Wire in once Postmark is configured as Supabase's custom SMTP.
-- **Branded review-request email template** for Postmark — same visual identity as the dashboard. Used for outbound campaign emails. Build when Postmark wiring lands.
+- **Branded review-request email template** for Postmark — same visual identity as the dashboard. Used for outbound campaign emails. The worker currently auto-wraps the plain-text body with a minimal HTML shell ([apps/worker/src/mailer/mailer.processor.ts](apps/worker/src/mailer/mailer.processor.ts)); replace with a proper templated HTML (Postmark templates or MJML) when design is ready.
+- **Per-location Postmark config UI** — `Location.fromEmailDomain` / `postmarkServerToken` / `postmarkMessageStream` columns are unused today; every location shares the single `POSTMARK_SERVER_TOKEN` + `POSTMARK_FROM_EMAIL` env. Needed before exiting Postmark test mode with multiple verified sender domains. Roadmap item #2 in CLAUDE.md.
+- **Encrypt `Location.postmarkServerToken` at rest** when per-location config lands. Column-level encryption (pgsodium or app-layer AES-GCM). Plaintext in the DB is fine while only the env-token path is wired.
 - **Backfill `docs/` for already-built areas.** The per-feature docs system is live (see CLAUDE.md → "Feature docs"); `docs/architecture.md`, `docs/customers.md`, `docs/review-requests.md` exist. Still to write — `auth.md`, `onboarding.md`, `invitations.md`, `google-reviews.md`, `design-system.md`, `dashboard.md` — write each the next time we touch that area (don't backfill in one big pass; the "why" is better recovered while working).
 
 ---

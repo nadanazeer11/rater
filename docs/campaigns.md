@@ -49,11 +49,11 @@ A campaign is the messaging behind a review request: the email a customer gets (
 - **`requiredState` is stored verbatim.** The API validates the vocab of `stepType`/`delayAnchor` but trusts the JSON predicate the editor sends (which only ever comes from the fixed presets).
 - **The preview is client-side.** It's a deliberate, ~3-line `{{token}}` substitution in `campaign-editor.tsx` — *not* the canonical render engine. The real renderer (which also has to produce the email HTML) lands with Postmark; don't try to share this preview helper with it.
 - **`<CampaignSelect>` shows whenever a campaign exists.** With one campaign the dropdown is locked to it (no other option), with more it lets the admin pick. The dropdown only hides at zero campaigns — the request submit will then trigger `getOrCreateDefault` on the backend.
+- **The client-side preview shares the same `renderTemplate` as the server send.** Both import from `@rater/types/templates` — the campaign editor's preview is exactly what Postmark renders. Don't fork it; if you change one, change both.
+- **`<CampaignSelect>` hides itself** when a location has one campaign — a request just uses it. Don't surface a pointless single-option dropdown.
 
 ## Not done yet
 
-- **Nothing sends.** No Postmark, no email. The dashboard still hands you the rate link to share manually. Campaign templates are stored but never rendered-and-sent.
-- **Nothing schedules the follow-up steps.** `ReviewRequestStepExecution` is still unused; a BullMQ scheduler that matches `CampaignStep.requiredState` and fires steps is a later PR. So in practice only the `initial` step is meaningful today — the editor says so.
-- **No `{{...}}` render engine in the API.** Only the client-side preview substitution exists. The canonical renderer (with whatever token set + escaping the email send needs) comes with the Postmark PR.
+- **Only the `initial` step fires.** Creating a review request enqueues a Postmark send of the campaign's initial step — see [docs/sending.md](sending.md). Follow-up steps are saved by the editor but nothing schedules them; a BullMQ scheduler that matches `CampaignStep.requiredState` is a later PR. The editor says so to admins.
 - **No campaign duplication / templates gallery / per-step reordering UI** — follow-ups can only be appended/removed, not dragged. Add if it's wanted.
 - **Archived campaigns can't be un-archived from the UI** — there's no list of archived ones. (`isActive` flip is the only state; add a UI if needed.)

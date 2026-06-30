@@ -1,7 +1,7 @@
 # Customers
 
 > **Scope:** the `Customer` model, the `CustomersRepository` (the engine other modules call to upsert/look up customers), and the read-only `/dashboard/customers` list page. **Customers are created as a side effect of review requests, not here** — see [docs/review-requests.md](review-requests.md) for the create path. For the API layering see [docs/architecture.md](architecture.md).
-> **Last updated:** 2026-05-13 (PR — `perf/dashboard-nav-transition`)
+> **Last updated:** 2026-05-25
 
 ## What it is
 
@@ -9,7 +9,7 @@ The people a location has requested reviews from. A `Customer` row appears the f
 
 ## How it works
 
-**Model** (`packages/db/prisma/schema.prisma` → `Customer`): per-location (`@@unique([locationId, email])` — the same person can be a customer of multiple businesses), soft-deleted (`deletedAt`, because `ReviewRequest`s reference them), plus lifecycle fields not used yet (`hasAttributedGoogleReview`, `lastReviewRequestSentAt`, `emailStatus`, `importSource`, `importedAt`). `emailStatus` / `importSource` are **strings, not enums** — `emailStatus ∈ {valid, invalid, unsubscribed, complained}` (always `valid` for now — bounce/unsub handling lands with Postmark webhooks), `importSource ∈ {manual, csv, api}` (set by the review-request create path — `manual` for the single dialog, `csv` for the bulk import; `api` is unused).
+**Model** (`packages/db/prisma/schema.prisma` → `Customer`): per-location (`@@unique([locationId, email])` — the same person can be a customer of multiple businesses), soft-deleted (`deletedAt`, because `ReviewRequest`s reference them), plus lifecycle fields (`hasAttributedGoogleReview` / `lastReviewRequestSentAt` not used yet; `emailStatus` / `importSource` / `importedAt` actively used). `emailStatus` / `importSource` are **strings, not enums** — `emailStatus ∈ {valid, invalid, unsubscribed, complained}` (default `valid`; the Postmark webhook in [docs/sending.md](sending.md) flips it to `invalid` on hard bounce and `complained` on spam complaint; the mailer worker's send guard skips any customer not `valid` so a bounced/complained address never gets another request), `importSource ∈ {manual, csv, api}` (set by the review-request create path — `manual` for the single dialog, `csv` for the bulk import; `api` is unused).
 
 **API** — `apps/api/src/customers/` (standard module pattern; see architecture.md):
 - `GET /customers?locationId=` — list non-deleted customers, newest first. That's the only endpoint. Authz: `CustomersService.assertMember` requires the caller to be a `LocationUser` of that location (any role) and rejects an empty `locationId` (a missing `locationId` in a Prisma `where` is "not filtered" → would leak other locations' customers, so the guard is load-bearing).
@@ -26,7 +26,7 @@ The people a location has requested reviews from. A `Customer` row appears the f
 ## Not done yet
 
 - No customer **edit** (name/phone), no search/filter, no pagination.
-- No **email-status** handling (`emailStatus` is always `valid`) — comes with Postmark webhooks.
+- No **unsubscribe** flow yet — `emailStatus = 'unsubscribed'` is reserved but never written. A one-click unsubscribe link in the email + a public token endpoint is a follow-up.
 - No **revive** of a soft-deleted customer (and nothing soft-deletes them anyway right now).
 - No **API-source ingestion** (`importSource: 'api'`) — POS/booking webhooks are a parked roadmap item.
 - No **status columns** (last request, rating outcome) on the list yet — planned once the requests data is richer.
