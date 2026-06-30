@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { matchesRequiredState, renderTemplate } from '@rater/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostmarkService } from './postmark.service';
+import { resolveSender } from './sender.resolver';
 
 export type SendReviewRequestEmailPayload = {
   reviewRequestId: string;
@@ -156,18 +157,28 @@ export class MailerProcessor {
     const textBody = renderTemplate(step.bodyTemplate, vars);
     const htmlBody = toHtmlBody(textBody);
 
-    const from = (this.config.get<string>('POSTMARK_FROM_EMAIL') ?? DEFAULT_FROM).trim();
-    const messageStream =
-      this.config.get<string>('POSTMARK_MESSAGE_STREAM') ?? 'outbound';
+    const sharedFromEmail = (
+      this.config.get<string>('POSTMARK_FROM_EMAIL') ?? DEFAULT_FROM
+    ).trim();
+    const sender = resolveSender({
+      provider: request.location.senderProvider,
+      businessName: request.location.business.name,
+      fromEmailDomain: request.location.fromEmailDomain,
+      fromEmailDomainVerified: request.location.fromEmailDomainVerified,
+      replyToEmail: request.location.replyToEmail,
+      messageStream: request.location.postmarkMessageStream,
+      sharedFromEmail,
+    });
 
     try {
       const result = await this.postmark.sendEmail({
         to: request.customer.email,
-        from,
+        from: sender.from,
+        replyTo: sender.replyTo,
         subject,
         htmlBody,
         textBody,
-        messageStream,
+        messageStream: sender.messageStream,
       });
 
       await this.prisma.$transaction([

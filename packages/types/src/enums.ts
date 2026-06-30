@@ -118,3 +118,6 @@ export const NOTIFICATION_CHANNELS = [
   'slack',
 ] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export const SENDER_PROVIDERS = ['shared', 'postmark_domain'] as const;
+export type SenderProvider = (typeof SENDER_PROVIDERS)[number];

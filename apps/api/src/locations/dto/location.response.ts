@@ -9,3 +9,13 @@ export class LocationResponseDto {
   baselineScrapedAt!: Date | null;
   createdAt!: Date;
 }
+
+export class SenderSettingsDto {
+  senderProvider!: string;
+  replyToEmail!: string | null;
+  fromEmailDomain!: string | null;
+  fromEmailDomainVerified!: boolean;
+  postmarkMessageStream!: string | null;
+  postmarkConfigured!: boolean;
+  sharedFromEmail!: string;
+}

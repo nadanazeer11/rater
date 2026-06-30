@@ -1,7 +1,16 @@
 # Sending (Postmark email)
 
-> **Scope:** how the initial review-request email leaves the system — the BullMQ queue, the worker that talks to Postmark, the inbound delivery/open/bounce webhook, and the per-send `ReviewRequestStepExecution` row that anchors them. For follow-up step scheduling see — not built yet (roadmap item #2). For the `ReviewRequest` lifecycle around the rate page see [docs/review-requests.md](review-requests.md). For the campaign template itself see [docs/campaigns.md](campaigns.md).
-> **Last updated:** 2026-05-25
+> **Scope:** how a review-request email leaves the system — the BullMQ queue, the worker that talks to Postmark, the **sender identity** (per-location `shared` vs own-domain), the inbound delivery/open/bounce webhook, and the per-send `ReviewRequestStepExecution` row that anchors them. For follow-up step *scheduling* see [docs/scheduler.md](scheduler.md). For the `ReviewRequest` lifecycle around the rate page see [docs/review-requests.md](review-requests.md). For the campaign template itself see [docs/campaigns.md](campaigns.md).
+> **Last updated:** 2026-06-30
+
+## Sender identity (per-location)
+
+Every send resolves its From/Reply-To from the request's `Location.senderProvider` ([apps/worker/src/mailer/sender.resolver.ts](../apps/worker/src/mailer/sender.resolver.ts)):
+
+- **`shared` (default, zero-DNS):** `From: "{business}" <{POSTMARK_FROM_EMAIL}>` — the platform's own verified domain with the business's display name — and `Reply-To: {Location.replyToEmail}` so replies land with the business. This is what a non-technical owner uses: connect nothing, send immediately, full deliverability + webhook telemetry. **This is the recommended/demo path.**
+- **`postmark_domain` (opt-in):** `From: "{business}" <reviews@{Location.fromEmailDomain}>` — the business's own domain — *only* once `fromEmailDomainVerified` is true. Until then the resolver **falls back to the shared address**, so sending never breaks. Changing the domain resets `fromEmailDomainVerified` to false.
+
+The admin-only `/dashboard/settings` page (`GET`/`PATCH /locations/:id/sender-settings`) picks the provider, sets `replyToEmail`, and — for own-domain — captures the domain and offers a **forwardable setup note** to hand to whoever manages the business's DNS (most owners aren't the technical contact). The Postmark server token is **write-only** (never returned; `postmarkConfigured` reports presence). The `resolveSender` seam is where a future Gmail/Microsoft "connect your inbox" provider would branch.
 
 ## What it is
 
@@ -89,7 +98,8 @@ In test mode, Postmark caps you at 100 sends to verified-domain recipients only 
 ## Not done yet
 
 - **Follow-up steps now fire** via the scheduler — see [docs/scheduler.md](scheduler.md). It reuses this same send path (`runSendStepEmail`) for follow-up steps, adding a send-time `requiredState` re-check.
-- **Per-location Postmark config.** Today every location shares the same `POSTMARK_SERVER_TOKEN` + `POSTMARK_FROM_EMAIL`. `Location.postmarkServerToken` / `fromEmailDomain` / `postmarkMessageStream` columns sit unused. Building the per-location Settings UI + `PATCH /locations/:id` endpoint is a separate PR — needed before we exit Postmark test mode with multiple verified sender domains.
+- **Per-location sender config — partly built.** The `/dashboard/settings` UI + `sender-settings` endpoints ship (provider choice, reply-to, own-domain capture). Still deferred: **live domain verification** — there's no Postmark Domains-API integration to generate the actual DKIM/Return-Path record values or auto-flip `fromEmailDomainVerified`; today an operator verifies the domain in Postmark and flips the flag. Until then own-domain selections send via the shared address. Also deferred: per-location Postmark *servers* (the `postmarkServerToken` column is captured but the worker still uses the platform token — fine while one Postmark account hosts multiple verified domains).
+- **Still using one shared `POSTMARK_FROM_EMAIL`** as the shared from-address for every location. Exiting Postmark test mode (verifying that domain + submitting the approval request) is the real unblock for live delivery — see [TODO.md](../TODO.md).
 - **Token encryption at rest.** When per-location tokens land, they should be encrypted (column-level). Logged in [TODO.md](../TODO.md).
 - **Branded magic-link auth emails.** Supabase still sends those.
 - **"Send test email" button** on the campaign editor — useful for debugging templates without creating a real request. Out of scope here.

@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 export interface SendEmailInput {
   to: string;
   from: string;
+  replyTo?: string;
   subject: string;
   htmlBody: string;
   textBody?: string;
@@ -48,6 +49,7 @@ export class PostmarkService {
     const res = await this.client.sendEmail({
       From: input.from,
       To: input.to,
+      ReplyTo: input.replyTo,
       Subject: input.subject,
       HtmlBody: input.htmlBody,
       TextBody: input.textBody,

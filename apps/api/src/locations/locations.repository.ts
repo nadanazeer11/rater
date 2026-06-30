@@ -19,6 +19,31 @@ export class LocationsRepository {
     });
   }
 
+  findAdminMembershipForLocation(authUserId: string, locationId: string) {
+    return this.prisma.locationUser.findFirst({
+      where: { authUserId, locationId, role: 'admin' },
+      select: { id: true },
+    });
+  }
+
+  findSenderSettings(locationId: string) {
+    return this.prisma.location.findFirst({
+      where: { id: locationId, deletedAt: null },
+      select: {
+        senderProvider: true,
+        replyToEmail: true,
+        fromEmailDomain: true,
+        fromEmailDomainVerified: true,
+        postmarkMessageStream: true,
+        postmarkServerToken: true,
+      },
+    });
+  }
+
+  updateSenderSettings(locationId: string, data: Prisma.LocationUpdateInput) {
+    return this.prisma.location.update({ where: { id: locationId }, data });
+  }
+
   findActiveByPlaceId(businessId: string, googlePlaceId: string) {
     return this.prisma.location.findFirst({
       where: { businessId, googlePlaceId, deletedAt: null },

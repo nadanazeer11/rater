@@ -127,6 +127,11 @@ enum NotificationChannel {
   slack
 }
 
+enum SenderProvider {
+  shared
+  postmark_domain
+}
+
 // =====================================================================
 // Tenancy + auth
 // =====================================================================
@@ -149,10 +154,15 @@ model Location {
 
   name String
 
-  // Email sending config (Postmark) — values stored encrypted at app layer.
-  fromEmailDomain       String? @map("from_email_domain")
-  postmarkServerToken   String? @map("postmark_server_token")
-  postmarkMessageStream String? @map("postmark_message_stream")
+  // Email sending config. `shared` (default) sends from the platform's own
+  // verified domain with the business name + a Reply-To back to them — zero DNS.
+  // `postmark_domain` sends from the business's own verified domain (opt-in).
+  senderProvider          SenderProvider @default(shared) @map("sender_provider")
+  replyToEmail            String?        @map("reply_to_email")
+  fromEmailDomain         String?        @map("from_email_domain")
+  fromEmailDomainVerified Boolean        @default(false) @map("from_email_domain_verified")
+  postmarkServerToken     String?        @map("postmark_server_token")
+  postmarkMessageStream   String?        @map("postmark_message_stream")
 
   // Google Place
   googlePlaceId      String? @map("google_place_id")

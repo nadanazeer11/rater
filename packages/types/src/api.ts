@@ -17,6 +17,7 @@ import type {
   RatingStatus,
   Role,
   RoutedTo,
+  SenderProvider,
 } from './enums';
 
 export interface BusinessSummary {
@@ -241,6 +242,27 @@ export interface LocationResponse {
 export interface OnboardingResult {
   businessId: string;
   locationIds: string[];
+}
+
+/** A location's email-sending configuration. The Postmark token is write-only —
+ *  never returned; `postmarkConfigured` reports whether one is set. */
+export interface SenderSettings {
+  senderProvider: SenderProvider;
+  replyToEmail: string | null;
+  fromEmailDomain: string | null;
+  fromEmailDomainVerified: boolean;
+  postmarkMessageStream: string | null;
+  postmarkConfigured: boolean;
+  /** The platform's shared "via rater" from-address, shown for the `shared` option. */
+  sharedFromEmail: string;
+}
+
+export interface UpdateSenderSettingsInput {
+  senderProvider?: SenderProvider;
+  replyToEmail?: string | null;
+  fromEmailDomain?: string | null;
+  postmarkServerToken?: string | null;
+  postmarkMessageStream?: string | null;
 }
 
 export interface InvitationDetails {

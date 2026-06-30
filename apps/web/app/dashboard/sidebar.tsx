@@ -27,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Customers', icon: GroupsRoundedIcon, path: '/dashboard/customers' },
   { label: 'Campaigns', icon: CampaignRoundedIcon, path: '/dashboard/campaigns' },
   { label: 'Reviews', icon: RateReviewRoundedIcon, path: '/dashboard/reviews' },
-  { label: 'Settings', icon: SettingsRoundedIcon },
+  { label: 'Settings', icon: SettingsRoundedIcon, path: '/dashboard/settings' },
 ];
 
 const DOT_COLORS = [
