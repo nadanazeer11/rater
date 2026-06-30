@@ -45,7 +45,7 @@ A campaign is the messaging behind a review request: the email a customer gets (
 
 - **No migration.** The schema already had `Campaign` + `CampaignStep` with every field — this PR only adds the API + UI on top.
 - **Default is implicit (newest active).** If you ever need a pinned default, add an `isDefault` column then; don't infer "default" from anything but recency.
-- **PATCH replaces all steps.** The editor is the source of truth for the step set on save — there's no per-step PATCH. Keep that if you touch `CampaignsRepository.update`; it relies on there being no `ReviewRequestStepExecution` rows (true until the scheduler ships — revisit then).
+- **PATCH replaces all steps.** The editor is the source of truth for the step set on save — there's no per-step PATCH. **Caution now that the scheduler ships:** `CampaignsRepository.update` does `deleteMany(steps)` + recreate, and a deleted `CampaignStep` cascade-deletes its `ReviewRequestStepExecution` rows. Editing a campaign that already has in-flight executions therefore loses that history — acceptable for the MVP (editing mid-flight is rare), but move to a non-destructive step upsert before this matters.
 - **`requiredState` is stored verbatim.** The API validates the vocab of `stepType`/`delayAnchor` but trusts the JSON predicate the editor sends (which only ever comes from the fixed presets).
 - **The preview is client-side.** It's a deliberate, ~3-line `{{token}}` substitution in `campaign-editor.tsx` — *not* the canonical render engine. The real renderer (which also has to produce the email HTML) lands with Postmark; don't try to share this preview helper with it.
 - **`<CampaignSelect>` shows whenever a campaign exists.** With one campaign the dropdown is locked to it (no other option), with more it lets the admin pick. The dropdown only hides at zero campaigns — the request submit will then trigger `getOrCreateDefault` on the backend.
@@ -54,6 +54,6 @@ A campaign is the messaging behind a review request: the email a customer gets (
 
 ## Not done yet
 
-- **Only the `initial` step fires.** Creating a review request enqueues a Postmark send of the campaign's initial step — see [docs/sending.md](sending.md). Follow-up steps are saved by the editor but nothing schedules them; a BullMQ scheduler that matches `CampaignStep.requiredState` is a later PR. The editor says so to admins.
+- **Follow-up steps now fire.** Creating a review request sends the initial step ([docs/sending.md](sending.md)) and the BullMQ scheduler fires the follow-ups when their `requiredState` still matches at send time ([docs/scheduler.md](scheduler.md)). The default campaign seeds two follow-ups; custom campaigns fire whatever the editor saved.
 - **No campaign duplication / templates gallery / per-step reordering UI** — follow-ups can only be appended/removed, not dragged. Add if it's wanted.
 - **Archived campaigns can't be un-archived from the UI** — there's no list of archived ones. (`isActive` flip is the only state; add a UI if needed.)

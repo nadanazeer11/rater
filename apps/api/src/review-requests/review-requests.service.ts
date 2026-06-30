@@ -9,6 +9,7 @@ import type { AuthUser } from '../auth/auth-user.type';
 import { CampaignsRepository } from '../campaigns/campaigns.repository';
 import { CustomersRepository } from '../customers/customers.repository';
 import { MailerQueue } from '../queue/mailer.queue';
+import { SchedulerQueue } from '../queue/scheduler.queue';
 import type { CreateReviewRequestDto } from './dto/create-review-request.dto';
 import type { FeedbackDto } from './dto/feedback.dto';
 import type { ImportReviewRequestsDto } from './dto/import-review-requests.dto';
@@ -43,6 +44,7 @@ export class ReviewRequestsService {
     private readonly customers: CustomersRepository,
     private readonly campaigns: CampaignsRepository,
     private readonly mailer: MailerQueue,
+    private readonly scheduler: SchedulerQueue,
   ) {}
 
   private rateUrl(token: string): string {
@@ -108,6 +110,7 @@ export class ReviewRequestsService {
       via: 'manual',
     });
     await this.mailer.enqueueReviewRequestEmail(req.id);
+    await this.scheduler.enqueueEvaluate(req.id);
     return { id: req.id, publicToken: req.publicToken, rateUrl: this.rateUrl(req.publicToken) };
   }
 
@@ -175,6 +178,7 @@ export class ReviewRequestsService {
         via: 'csv',
       });
       await this.mailer.enqueueReviewRequestEmail(req.id);
+      await this.scheduler.enqueueEvaluate(req.id);
       created += 1;
     }
 
@@ -235,6 +239,9 @@ export class ReviewRequestsService {
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
+    // Rating changed the request's status — re-evaluate follow-ups (a no-rating
+    // reminder may now skip; a no-Google-review nudge may now become eligible).
+    await this.scheduler.enqueueEvaluate(r.id);
     return {
       routedTo,
       googleReviewUrl: routedTo === 'google' ? r.location.googleReviewUrl : null,
@@ -255,6 +262,7 @@ export class ReviewRequestsService {
     }
     if (r.feedbackSubmission) throw new ConflictException('Feedback has already been submitted.');
     await this.repo.createFeedback(r.id, dto.text.trim());
+    await this.scheduler.enqueueEvaluate(r.id);
     return { ok: true };
   }
 }

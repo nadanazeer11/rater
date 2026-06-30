@@ -19,18 +19,45 @@ export type CampaignWithCounts = Prisma.CampaignGetPayload<{
   include: typeof summaryInclude;
 }>;
 
-/** The seed step every freshly-created campaign starts with. Mirrors the
- *  placeholder template text — there's no `{{...}}` render engine yet. */
-const SEED_INITIAL_STEP: Prisma.CampaignStepCreateWithoutCampaignInput = {
-  stepOrder: 1,
-  stepType: 'initial',
-  delayDays: 0,
-  delayAnchor: 'request_created',
-  requiredState: {} as Prisma.InputJsonValue,
-  subjectTemplate: 'How was your visit to {{location}}?',
-  bodyTemplate:
-    'Hi {{name}},\n\nThanks for choosing {{location}}. Could you take 10 seconds to rate your visit?\n\n{{rate_link}}\n\n— The {{business}} team',
-};
+/** The steps every freshly-created default campaign starts with: the initial
+ *  email plus two follow-ups the scheduler fires when their predicate still
+ *  holds. `requiredState` is re-checked against fresh status at send time — a
+ *  follow-up is skipped if the condition no longer applies (e.g. they rated). */
+const SEED_STEPS: Prisma.CampaignStepCreateWithoutCampaignInput[] = [
+  {
+    stepOrder: 1,
+    stepType: 'initial',
+    delayDays: 0,
+    delayAnchor: 'request_created',
+    requiredState: {} as Prisma.InputJsonValue,
+    subjectTemplate: 'How was your visit to {{location}}?',
+    bodyTemplate:
+      'Hi {{name}},\n\nThanks for choosing {{location}}. Could you take 10 seconds to rate your visit?\n\n{{rate_link}}\n\n— The {{business}} team',
+  },
+  {
+    stepOrder: 2,
+    stepType: 'follow_up_no_rating',
+    delayDays: 3,
+    delayAnchor: 'request_created',
+    requiredState: { ratingStatus: 'not_rated' } as Prisma.InputJsonValue,
+    subjectTemplate: 'A quick reminder, {{name}}',
+    bodyTemplate:
+      'Hi {{name}},\n\nWe’d still love your feedback on your visit to {{location}} — it only takes a few seconds.\n\n{{rate_link}}\n\n— The {{business}} team',
+  },
+  {
+    stepOrder: 3,
+    stepType: 'follow_up_no_google_review',
+    delayDays: 7,
+    delayAnchor: 'request_created',
+    requiredState: {
+      ratingStatus: 'rated_positive',
+      googleAttributionStatus: 'pending_check',
+    } as Prisma.InputJsonValue,
+    subjectTemplate: 'Thanks for the kind words, {{name}}!',
+    bodyTemplate:
+      'Hi {{name}},\n\nWe’re thrilled you enjoyed {{location}}. Would you mind sharing it on Google? It helps a lot.\n\n{{rate_link}}\n\n— The {{business}} team',
+  },
+];
 
 @Injectable()
 export class CampaignsRepository {
@@ -81,7 +108,7 @@ export class CampaignsRepository {
 
   create(locationId: string, name: string): Promise<CampaignWithSteps> {
     return this.prisma.campaign.create({
-      data: { locationId, name, steps: { create: SEED_INITIAL_STEP } },
+      data: { locationId, name, steps: { create: SEED_STEPS } },
       include: detailInclude,
     });
   }

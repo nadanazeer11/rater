@@ -88,7 +88,7 @@ In test mode, Postmark caps you at 100 sends to verified-domain recipients only 
 
 ## Not done yet
 
-- **Follow-up steps don't fire.** The campaign editor saves them; nothing executes them. The `requiredState` predicate evaluator + delayed-send scheduler is roadmap item #2 in [CLAUDE.md](../CLAUDE.md).
+- **Follow-up steps now fire** via the scheduler — see [docs/scheduler.md](scheduler.md). It reuses this same send path (`runSendStepEmail`) for follow-up steps, adding a send-time `requiredState` re-check.
 - **Per-location Postmark config.** Today every location shares the same `POSTMARK_SERVER_TOKEN` + `POSTMARK_FROM_EMAIL`. `Location.postmarkServerToken` / `fromEmailDomain` / `postmarkMessageStream` columns sit unused. Building the per-location Settings UI + `PATCH /locations/:id` endpoint is a separate PR — needed before we exit Postmark test mode with multiple verified sender domains.
 - **Token encryption at rest.** When per-location tokens land, they should be encrypted (column-level). Logged in [TODO.md](../TODO.md).
 - **Branded magic-link auth emails.** Supabase still sends those.

@@ -9,14 +9,21 @@ import { Worker, type Job } from 'bullmq';
 import {
   MailerProcessor,
   type SendReviewRequestEmailPayload,
+  type SendStepEmailPayload,
 } from './mailer.processor';
 
 export const SEND_REVIEW_REQUEST_EMAIL_QUEUE = 'send-review-request-email';
 
+type MailerJobPayload = SendReviewRequestEmailPayload | SendStepEmailPayload;
+
+function hasStepId(p: MailerJobPayload): p is SendStepEmailPayload {
+  return 'campaignStepId' in p && typeof p.campaignStepId === 'string';
+}
+
 @Injectable()
 export class MailerWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MailerWorker.name);
-  private worker: Worker<SendReviewRequestEmailPayload> | null = null;
+  private worker: Worker<MailerJobPayload> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -32,11 +39,17 @@ export class MailerWorker implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.worker = new Worker<SendReviewRequestEmailPayload>(
+    this.worker = new Worker<MailerJobPayload>(
       SEND_REVIEW_REQUEST_EMAIL_QUEUE,
-      async (job: Job<SendReviewRequestEmailPayload>) => {
+      async (job: Job<MailerJobPayload>) => {
         this.logger.log(`Job ${job.id}: ${JSON.stringify(job.data)}`);
-        await this.processor.runSendInitialEmail(job.data);
+        // A `send-step` job (from the scheduler) names a specific campaign step;
+        // a `send-initial` job (from the api) resolves the initial step itself.
+        if (hasStepId(job.data)) {
+          await this.processor.runSendStepEmail(job.data);
+        } else {
+          await this.processor.runSendInitialEmail(job.data);
+        }
       },
       {
         connection: { url, family: 0 },
