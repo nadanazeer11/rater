@@ -118,6 +118,23 @@ export interface ReviewReplyDraft {
   draft: string;
 }
 
+/** One month bucket in the review-sentiment trend. */
+export interface SentimentTrendPoint {
+  /** `YYYY-MM`. */
+  bucket: string;
+  /** Short label for the axis, e.g. "Jun". */
+  label: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  avgRating: number | null;
+}
+
+export interface SentimentTrend {
+  points: SentimentTrendPoint[];
+}
+
 /** A tentative (medium/low-confidence) Google-review → request match awaiting an
  *  admin's confirm/reject in the manual-attribution queue. */
 export interface PendingAttributionMatch {

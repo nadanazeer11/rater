@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SentimentClassifier } from '../ai/sentiment.classifier';
 import { OutscraperService } from './outscraper.service';
 
 export type BaselineScrapePayload = {
@@ -13,6 +14,7 @@ export class ScrapeProcessor {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outscraper: OutscraperService,
+    private readonly sentiment: SentimentClassifier,
   ) {}
 
   async runBaseline({ locationId }: BaselineScrapePayload): Promise<void> {
@@ -90,6 +92,8 @@ export class ScrapeProcessor {
           },
         }),
       ]);
+
+      await this.sentiment.classifyStale(locationId);
 
       this.logger.log(
         `Baseline-scrape done for ${locationId}: ${result.reviews.length} reviews${result.stub ? ' (STUB)' : ''}`,

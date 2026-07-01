@@ -30,4 +30,4 @@ A thin analytics layer over the existing `ReviewRequest` status tracks — no ne
 ## Not done yet
 
 - **Funnel filter UI.** The endpoint accepts `from` / `to` / `campaignId`, but the dashboard renders the all-time funnel with no date-range / campaign picker yet — wire the inputs when needed.
-- **No time-series / trends** (requests-over-time, rating distribution over time) and **no per-campaign performance leaderboard** — both deferred.
+- **Review sentiment trend ships** ([docs/sentiment.md](sentiment.md)); other time-series (requests-over-time, rating distribution over time) and a **per-campaign performance leaderboard** are still deferred.

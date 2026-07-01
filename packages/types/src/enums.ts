@@ -121,3 +121,6 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
 export const SENDER_PROVIDERS = ['shared', 'postmark_domain'] as const;
 export type SenderProvider = (typeof SENDER_PROVIDERS)[number];
+
+export const REVIEW_SENTIMENTS = ['positive', 'neutral', 'negative'] as const;
+export type ReviewSentiment = (typeof REVIEW_SENTIMENTS)[number];

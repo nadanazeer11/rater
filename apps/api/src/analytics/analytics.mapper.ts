@@ -1,5 +1,70 @@
-import type { FunnelResponse, FunnelStage, FunnelStageKey } from '@rater/types';
+import type {
+  FunnelResponse,
+  FunnelStage,
+  FunnelStageKey,
+  ReviewSentiment,
+  SentimentTrend,
+} from '@rater/types';
 import type { FunnelCounts } from './analytics.repository';
+
+const MONTH_LABELS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function toSentimentTrend(
+  rows: { postedAt: Date; sentiment: ReviewSentiment | null; rating: number }[],
+  months: number,
+): SentimentTrend {
+  const now = new Date();
+  const buckets = new Map<
+    string,
+    { label: string; positive: number; neutral: number; negative: number; total: number; ratingSum: number }
+  >();
+  const order: string[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = monthKey(d);
+    order.push(key);
+    buckets.set(key, {
+      label: MONTH_LABELS[d.getMonth()] ?? '',
+      positive: 0,
+      neutral: 0,
+      negative: 0,
+      total: 0,
+      ratingSum: 0,
+    });
+  }
+
+  for (const r of rows) {
+    const b = buckets.get(monthKey(r.postedAt));
+    if (!b) continue;
+    b.total += 1;
+    b.ratingSum += r.rating;
+    if (r.sentiment === 'positive') b.positive += 1;
+    else if (r.sentiment === 'neutral') b.neutral += 1;
+    else if (r.sentiment === 'negative') b.negative += 1;
+  }
+
+  return {
+    points: order.map((key) => {
+      const b = buckets.get(key)!;
+      return {
+        bucket: key,
+        label: b.label,
+        positive: b.positive,
+        neutral: b.neutral,
+        negative: b.negative,
+        total: b.total,
+        avgRating: b.total > 0 ? Math.round((b.ratingSum / b.total) * 10) / 10 : null,
+      };
+    }),
+  };
+}
 
 function pct(n: number, d: number): number {
   return d > 0 ? Math.round((n / d) * 100) : 0;

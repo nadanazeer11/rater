@@ -16,6 +16,7 @@
     "@mui/icons-material": "^6.0.0",
     "@mui/material": "^6.0.0",
     "@mui/material-nextjs": "^6.0.0",
+    "@mui/x-charts": "^9.7.0",
     "@rater/types": "workspace:*",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",

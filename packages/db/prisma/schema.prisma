@@ -132,6 +132,12 @@ enum SenderProvider {
   postmark_domain
 }
 
+enum ReviewSentiment {
+  positive
+  neutral
+  negative
+}
+
 // =====================================================================
 // Tenancy + auth
 // =====================================================================
@@ -495,6 +501,11 @@ model GoogleReview {
   // Owner's public reply, scraped from Google (Outscraper's owner_answer).
   ownerReplyText String?   @map("owner_reply_text") @db.Text
   ownerRepliedAt DateTime? @map("owner_replied_at")
+
+  // Cached AI sentiment of the review text. Refreshed only when stale (>15d) and
+  // only for the location's most recent reviews — see docs/sentiment.md.
+  sentiment             ReviewSentiment? @map("sentiment")
+  sentimentClassifiedAt DateTime?        @map("sentiment_classified_at")
 
   firstSeenInSyncId String     @map("first_seen_in_sync_id")
   firstSeenInSync   ReviewSync @relation("FirstSeen", fields: [firstSeenInSyncId], references: [id])

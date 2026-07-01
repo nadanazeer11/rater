@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SentimentClassifier } from '../ai/sentiment.classifier';
 import { OutscraperService } from '../scrape/outscraper.service';
 import { AttributionMatcher } from './attribution.matcher';
 import { AttributionProducer } from './attribution.producer';
@@ -13,6 +14,7 @@ export class AttributionProcessor {
     private readonly outscraper: OutscraperService,
     private readonly matcher: AttributionMatcher,
     private readonly producer: AttributionProducer,
+    private readonly sentiment: SentimentClassifier,
   ) {}
 
   /** Pull the location's current Google reviews, insert any newly-seen ones,
@@ -85,6 +87,7 @@ export class AttributionProcessor {
       });
 
       await this.matcher.runForLocation(locationId);
+      await this.sentiment.classifyStale(locationId);
       this.logger.log(
         `Incremental sync ${locationId}: +${reviewsAdded} reviews${result.stub ? ' (STUB)' : ''}`,
       );

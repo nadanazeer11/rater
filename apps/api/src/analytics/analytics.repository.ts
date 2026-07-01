@@ -114,4 +114,12 @@ export class AnalyticsRepository {
 
     return { sent, delivered, opened, rated, routed, posted };
   }
+
+  sentimentTrendRows(locationId: string, since: Date) {
+    return this.prisma.googleReview.findMany({
+      where: { locationId, removedAt: null, postedAt: { gte: since } },
+      select: { postedAt: true, sentiment: true, rating: true },
+      orderBy: { postedAt: 'asc' },
+    });
+  }
 }

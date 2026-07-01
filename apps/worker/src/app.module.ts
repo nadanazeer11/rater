@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AiModule } from './ai/ai.module';
 import { AttributionModule } from './attribution/attribution.module';
 import { MailerModule } from './mailer/mailer.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -17,6 +18,7 @@ import { ScrapeModule } from './scrape/scrape.module';
       ],
     }),
     PrismaModule,
+    AiModule,
     ScrapeModule,
     MailerModule,
     SchedulerModule,

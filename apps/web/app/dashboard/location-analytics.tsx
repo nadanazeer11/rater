@@ -2,6 +2,7 @@
 
 import type { FunnelStage } from '@rater/types';
 import { useFunnel, useOverview } from '@/hooks/use-analytics';
+import { SentimentTrendChart } from './sentiment-trend-chart';
 
 export function LocationAnalytics({ locationId }: { locationId: string }) {
   const { data: overview, isPending: overviewPending } = useOverview(locationId);
@@ -47,6 +48,8 @@ export function LocationAnalytics({ locationId }: { locationId: string }) {
         stages={funnel?.stages ?? null}
         pending={funnelPending}
       />
+
+      <SentimentTrendChart locationId={locationId} />
     </section>
   );
 }
