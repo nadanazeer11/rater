@@ -1,5 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import type { FunnelResponse, OverviewStats, SentimentTrend } from '@rater/types';
+import type {
+  CampaignPerformanceResponse,
+  FunnelResponse,
+  OverviewStats,
+  SentimentTrend,
+} from '@rater/types';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.type';
@@ -37,5 +42,13 @@ export class AnalyticsController {
     @Query() query: SentimentTrendQueryDto,
   ): Promise<SentimentTrend> {
     return this.service.sentimentTrend(user, query);
+  }
+
+  @Get('campaigns')
+  campaigns(
+    @CurrentUser() user: AuthUser,
+    @Query('locationId') locationId: string,
+  ): Promise<CampaignPerformanceResponse> {
+    return this.service.campaigns(user, locationId);
   }
 }

@@ -11,14 +11,16 @@ A thin analytics layer over the existing `ReviewRequest` status tracks — no ne
 
 - **`GET /analytics/overview?locationId=`** → `OverviewStats`. `requestsSent` = requests whose `deliveryStatus` left `pending`; `awaitingResponse` = `ratingStatus = not_rated` AND `deliveryStatus in (sent, delivered)`; `newGoogleReviews` = `GoogleReview` rows `postedAt > Location.baselineScrapedAt` (or **0** — not "all" — when no baseline exists). `baselineCaptured` lets the card tell "0 new" apart from "no baseline yet".
 - **`GET /analytics/funnel?locationId=&from=&to=&campaignId=`** → `FunnelResponse`. Six counts over one shared `where` (location + `deletedAt: null` + optional `createdAt` range + optional `campaignId`), run in a single `$transaction`. The mapper turns counts into stages with `pctOfStart` (vs the first stage) and `pctOfPrev`.
+- **`GET /analytics/campaigns?locationId=`** → `CampaignPerformanceResponse`. Per active campaign, the funnel counts (`sent`/`delivered`/`opened`/`rated`/`posted`) — one pass over the location's requests, bucketed by `campaignId` in the mapper (requests on archived campaigns are ignored). Newest active campaign is flagged `isDefault`. Powers the "Campaign performance" section on the Campaigns page. For the sentiment trend see [docs/sentiment.md](sentiment.md).
 - **The "Posted on Google" stage is now real.** It counts `googleAttributionStatus = confirmed_posted`, which the attribution pipeline sets (auto for high-confidence matches, manual-confirm for the rest — see [docs/attribution.md](attribution.md)). The stage no longer carries `pending`. "Clicked to Google" (`redirectedToGoogleAt`) remains the upstream stage.
 - **Stages are "reached at least this far" measures**, computed independently off the four orthogonal tracks — they are *not* a strict state machine. A bounced request never reaches Delivered; a request can be Rated without having a recorded Open (e.g. the link was opened directly). The UI gives every non-zero stage a small min-width bar so downstream activity stays visible even when an upstream count is lower.
 
 ## Key files
 
 - `apps/api/src/analytics/{analytics.module,analytics.controller,analytics.service,analytics.repository,analytics.mapper}.ts` + `dto/analytics.query.dto.ts`. Registered in `app.module.ts`. Controller is `@UseGuards(AuthGuard)`; the service `assertMember`-guards every call on `locationId`.
-- `apps/web/hooks/use-analytics.ts` — `useOverview` + `useFunnel` (both `enabled` on `locationId`, default 5-min `staleTime`).
-- `apps/web/app/dashboard/location-analytics.tsx` — `'use client'` Overview section: the three `StatCard`s + the `Funnel`. Embedded by the server component `location-detail.tsx`.
+- `apps/web/hooks/{use-analytics,use-sentiment-trend,use-campaign-performance}.ts` — read hooks (`enabled` on `locationId`, default 5-min `staleTime`).
+- `apps/web/app/dashboard/location-analytics.tsx` — `'use client'` Overview: the three `StatCard`s + the `Funnel` + the `SentimentTrendChart`. Embedded by the server component `location-detail.tsx`.
+- `apps/web/app/dashboard/campaigns/campaign-performance.tsx` — the "Campaign performance" section on the Campaigns page.
 - `packages/types/src/api.ts` — `OverviewStats`, `FunnelResponse`, `FunnelStage`, `FunnelStageKey`.
 
 ## Conventions / gotchas
@@ -30,4 +32,4 @@ A thin analytics layer over the existing `ReviewRequest` status tracks — no ne
 ## Not done yet
 
 - **Funnel filter UI.** The endpoint accepts `from` / `to` / `campaignId`, but the dashboard renders the all-time funnel with no date-range / campaign picker yet — wire the inputs when needed.
-- **Review sentiment trend ships** ([docs/sentiment.md](sentiment.md)); other time-series (requests-over-time, rating distribution over time) and a **per-campaign performance leaderboard** are still deferred.
+- **Review sentiment trend** ([docs/sentiment.md](sentiment.md)) and **per-campaign performance** both ship; other time-series (requests-over-time, rating distribution over time) are still deferred.

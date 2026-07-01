@@ -1,11 +1,59 @@
 import type {
+  CampaignPerformance,
+  DeliveryStatus,
+  EngagementStatus,
   FunnelResponse,
   FunnelStage,
   FunnelStageKey,
+  GoogleAttributionStatus,
+  RatingStatus,
   ReviewSentiment,
   SentimentTrend,
 } from '@rater/types';
 import type { FunnelCounts } from './analytics.repository';
+
+interface RequestStatusRow {
+  campaignId: string;
+  deliveryStatus: DeliveryStatus;
+  engagementStatus: EngagementStatus;
+  ratingStatus: RatingStatus;
+  googleAttributionStatus: GoogleAttributionStatus;
+}
+
+const OPENED: EngagementStatus[] = ['opened', 'link_clicked', 'landing_viewed'];
+const RATED: RatingStatus[] = ['rated_positive', 'rated_negative', 'feedback_submitted'];
+
+export function toCampaignPerformance(
+  campaigns: { id: string; name: string }[],
+  rows: RequestStatusRow[],
+): CampaignPerformance[] {
+  const byId = new Map<string, CampaignPerformance>();
+  // First (newest active) campaign is the location's default.
+  campaigns.forEach((c, i) => {
+    byId.set(c.id, {
+      campaignId: c.id,
+      campaignName: c.name,
+      isDefault: i === 0,
+      sent: 0,
+      delivered: 0,
+      opened: 0,
+      rated: 0,
+      posted: 0,
+    });
+  });
+
+  for (const r of rows) {
+    const perf = byId.get(r.campaignId);
+    if (!perf) continue; // request on an archived campaign — skip
+    if (r.deliveryStatus !== 'pending') perf.sent += 1;
+    if (r.deliveryStatus === 'delivered') perf.delivered += 1;
+    if (OPENED.includes(r.engagementStatus)) perf.opened += 1;
+    if (RATED.includes(r.ratingStatus)) perf.rated += 1;
+    if (r.googleAttributionStatus === 'confirmed_posted') perf.posted += 1;
+  }
+
+  return campaigns.map((c) => byId.get(c.id)!);
+}
 
 const MONTH_LABELS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

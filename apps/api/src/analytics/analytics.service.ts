@@ -3,9 +3,18 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import type { FunnelResponse, OverviewStats, SentimentTrend } from '@rater/types';
+import type {
+  CampaignPerformanceResponse,
+  FunnelResponse,
+  OverviewStats,
+  SentimentTrend,
+} from '@rater/types';
 import type { AuthUser } from '../auth/auth-user.type';
-import { toFunnel, toSentimentTrend } from './analytics.mapper';
+import {
+  toCampaignPerformance,
+  toFunnel,
+  toSentimentTrend,
+} from './analytics.mapper';
 import { AnalyticsRepository } from './analytics.repository';
 import type {
   FunnelQueryDto,
@@ -51,5 +60,14 @@ export class AnalyticsService {
     since.setHours(0, 0, 0, 0);
     const rows = await this.repo.sentimentTrendRows(q.locationId, since);
     return toSentimentTrend(rows, months);
+  }
+
+  async campaigns(user: AuthUser, locationId: string): Promise<CampaignPerformanceResponse> {
+    await this.assertMember(user, locationId);
+    const [campaigns, rows] = await Promise.all([
+      this.repo.activeCampaigns(locationId),
+      this.repo.requestStatusRows(locationId),
+    ]);
+    return { campaigns: toCampaignPerformance(campaigns, rows) };
   }
 }

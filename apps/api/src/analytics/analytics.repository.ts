@@ -122,4 +122,25 @@ export class AnalyticsRepository {
       orderBy: { postedAt: 'asc' },
     });
   }
+
+  activeCampaigns(locationId: string) {
+    return this.prisma.campaign.findMany({
+      where: { locationId, isActive: true },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  requestStatusRows(locationId: string) {
+    return this.prisma.reviewRequest.findMany({
+      where: { locationId, deletedAt: null },
+      select: {
+        campaignId: true,
+        deliveryStatus: true,
+        engagementStatus: true,
+        ratingStatus: true,
+        googleAttributionStatus: true,
+      },
+    });
+  }
 }

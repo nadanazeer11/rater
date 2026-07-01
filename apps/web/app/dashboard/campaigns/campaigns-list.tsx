@@ -5,6 +5,7 @@ import { useCampaigns } from '@/hooks/use-campaigns';
 import { EmptyState } from '@/components/empty-state';
 import { useDashboard } from '../dashboard-context';
 import { CreateCampaignButton } from './create-campaign-dialog';
+import { CampaignPerformance } from './campaign-performance';
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -99,6 +100,8 @@ export function CampaignsList() {
           </div>
         )}
       </div>
+
+      {campaigns && campaigns.length > 0 && <CampaignPerformance />}
     </main>
   );
 }

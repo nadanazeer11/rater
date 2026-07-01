@@ -61,6 +61,22 @@ export interface FunnelResponse {
   to: string | null;
 }
 
+/** Per-campaign funnel counts for the campaign-performance view. */
+export interface CampaignPerformance {
+  campaignId: string;
+  campaignName: string;
+  isDefault: boolean;
+  sent: number;
+  delivered: number;
+  opened: number;
+  rated: number;
+  posted: number;
+}
+
+export interface CampaignPerformanceResponse {
+  campaigns: CampaignPerformance[];
+}
+
 export interface LocationSummary {
   id: string;
   name: string;
